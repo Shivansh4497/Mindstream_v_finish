@@ -182,8 +182,8 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
                       {suggestion.label}
                     </div>
                     <div className="text-[10px] text-gray-400 capitalize">
-                      {suggestion.type === 'habit' ? `${suggestion.data.frequency} Habit` :
-                        suggestion.type === 'intention' ? `${suggestion.data.timeframe} Goal` : 'Discuss in Chat'}
+                      {suggestion.type === 'habit' ? `${suggestion.data?.frequency || 'daily'} Habit` :
+                        suggestion.type === 'intention' ? `${suggestion.data?.timeframe || 'weekly'} Goal` : 'Discuss in Chat'}
                     </div>
                   </div>
                 </div>
