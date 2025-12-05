@@ -357,7 +357,7 @@ export const MindstreamApp: React.FC = () => {
                                         actions.handleSendMessage(`I'd like to explore this reflection: "${summary}"`);
                                     }}
                                     isGenerating={state.isGeneratingReflection}
-                                    onAddSuggestion={(s) => actions.handleAddIntention(s.text, s.timeframe)}
+                                    onAddSuggestion={(s) => actions.handleAddIntention(s.text, s.timeframe || 'daily')}
                                     aiStatus={state.aiStatus}
                                     onDebug={() => reflections.getRawReflectionForDebug().then(res => actions.setToast({ message: "Debug check console", id: 1 }))}
                                     debugOutput={null}
