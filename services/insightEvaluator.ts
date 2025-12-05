@@ -431,7 +431,7 @@ async function callClaudeJudge(prompt: string, apiKey: string): Promise<Evaluati
  * Call Gemini as judge (using the existing client)
  */
 async function callGeminiJudge(prompt: string, apiKey: string): Promise<EvaluationScores> {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
