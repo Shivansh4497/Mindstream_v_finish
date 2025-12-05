@@ -158,7 +158,7 @@ Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, F
 Entry: "${entryText}"
 ${isTest ? "TEST MODE: Always suggest something." : "Only suggest if clearly needed."}
 
-Return: {"suggestions": [{"type": "habit", "text": "...", "emoji": "🎯"}, {"type": "intention", "text": "..."}]}
+Return: {"suggestions": [{"type": "habit", "label": "Do X daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Achieve Y", "data": {"timeframe": "weekly"}}]}
 Return empty suggestions array if nothing to suggest.`;
 
                 const response = await callGemini(prompt);
