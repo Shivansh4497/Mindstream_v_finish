@@ -11,8 +11,8 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-2.0-flash-exp';
-const BACKUP_MODEL = 'gemini-1.5-flash';
+const PRIMARY_MODEL = 'gemini-1.5-flash-latest';
+const BACKUP_MODEL = 'gemini-1.5-pro-latest';
 
 interface GeminiRequest {
     action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords';
@@ -22,28 +22,43 @@ interface GeminiRequest {
 async function callGemini(model: string, contents: string, responseJson: boolean = true): Promise<any> {
     const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${geminiKey}`;
 
+    console.log(`[AI Proxy] Calling ${model}, responseJson: ${responseJson}, content length: ${contents.length}`);
+
     const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{ parts: [{ text: contents }] }],
-            generationConfig: responseJson ? { response_mime_type: 'application/json' } : {}
+            generationConfig: responseJson ? { responseMimeType: 'application/json' } : {}
         })
     });
 
     if (!response.ok) {
         const error = await response.text();
+        console.error(`[AI Proxy] Gemini API error: ${response.status}`, error);
         throw new Error(`Gemini API error: ${response.status} - ${error}`);
     }
 
     const result = await response.json();
+    console.log(`[AI Proxy] Got response, candidates: ${result.candidates?.length}`);
 
     if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.error(`[AI Proxy] Invalid response structure:`, JSON.stringify(result).slice(0, 500));
         throw new Error('Invalid Gemini response format');
     }
 
     const text = result.candidates[0].content.parts[0].text;
-    return responseJson ? JSON.parse(text) : text;
+    console.log(`[AI Proxy] Response text length: ${text.length}`);
+
+    if (responseJson) {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error(`[AI Proxy] Failed to parse JSON:`, text.slice(0, 500));
+            throw new Error('Failed to parse AI response as JSON');
+        }
+    }
+    return text;
 }
 
 async function callWithFallback(contents: string, responseJson: boolean = true): Promise<any> {
