@@ -43,6 +43,15 @@ export const useAppLogic = () => {
     const [isAddingHabit, setIsAddingHabit] = useState(false);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
+    // Pending insight for first-entry Quick Start users
+    const [pendingInsight, setPendingInsight] = useState<{
+        insight: string;
+        followUpQuestion: string;
+        entryText: string;
+        suggestedHabit?: { name: string; emoji: string };
+        suggestedIntention?: string;
+    } | null>(null);
+
     const isMounted = useRef(true);
 
     useEffect(() => {
@@ -446,7 +455,7 @@ export const useAppLogic = () => {
     };
 
     return {
-        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore },
-        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections }
+        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight },
+        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight }
     };
 };

@@ -28,6 +28,7 @@ import { LifeAreaDashboard } from './components/LifeAreaDashboard';
 import { FocusView } from './components/FocusView';
 import { InsightsView } from './components/InsightsView';
 import { YearlyReview } from './components/YearlyReview';
+import { InsightModal } from './components/InsightModal';
 import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewService';
 
 import { useAppLogic } from './hooks/useAppLogic';
@@ -69,12 +70,56 @@ export const MindstreamApp: React.FC = () => {
     const [onboardingStep, setOnboardingStep] = useLocalStorage<number>(onboardingKey, ONBOARDING_NOT_STARTED);
     const [legacyPrivacy] = useLocalStorage('hasSeenPrivacy', false);
 
+    // Track if Quick Start user has seen their first insight
+    const hasSeenInsightKey = user ? `hasSeenFirstInsight_${user.id}` : 'hasSeenFirstInsight';
+    const [hasSeenFirstInsight, setHasSeenFirstInsight] = useLocalStorage<boolean>(hasSeenInsightKey, false);
+
     // Legacy migration: users who already saw privacy screen skip onboarding
     useEffect(() => {
         if (legacyPrivacy && onboardingStep === ONBOARDING_NOT_STARTED) {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
         }
     }, [legacyPrivacy, onboardingStep]);
+
+    // Generate insight for Quick Start users after their first entry
+    useEffect(() => {
+        // Only for Quick Start users who haven't seen an insight yet
+        if (onboardingStep !== ONBOARDING_QUICK_START) return;
+        if (hasSeenFirstInsight) return;
+        if (state.aiStatus !== 'ready') return;
+
+        // Check if there's a new entry (more than just temp entries)
+        const realEntries = state.entries.filter(e => !e.id.startsWith('temp-'));
+        if (realEntries.length === 0) return;
+
+        // Generate insight for the first entry
+        const firstEntry = realEntries[0];
+        if (!firstEntry.text || firstEntry.text.length < 10) return;
+
+        // Prevent multiple calls
+        if (state.pendingInsight) return;
+
+        // Generate the insight
+        gemini.generateInstantInsight(
+            firstEntry.text,
+            firstEntry.primary_sentiment || 'Reflective',
+            'Self', // Default life area
+            'General' // Default trigger
+        ).then(async (insightResult) => {
+            // Generate suggested habit
+            const suggestions = await gemini.generateEntrySuggestions(firstEntry.text).catch(() => null);
+            const habitSuggestion = suggestions?.find(s => s.type === 'habit');
+            const intentionSuggestion = suggestions?.find(s => s.type === 'intention');
+
+            actions.setPendingInsight({
+                insight: insightResult.insight,
+                followUpQuestion: insightResult.followUpQuestion,
+                entryText: firstEntry.text,
+                suggestedHabit: habitSuggestion ? { name: habitSuggestion.text, emoji: habitSuggestion.emoji || '🎯' } : undefined,
+                suggestedIntention: intentionSuggestion?.text,
+            });
+        }).catch(console.error);
+    }, [state.entries, state.aiStatus, onboardingStep, hasSeenFirstInsight, state.pendingInsight]);
 
     // Chat Starters - Using the new reflectionService
     useEffect(() => {
@@ -314,6 +359,53 @@ export const MindstreamApp: React.FC = () => {
                     onClose={() => setYearlyReviewData(null)}
                 />
             )}
+
+            {/* Insight Modal for Quick Start users */}
+            <InsightModal
+                isOpen={!!state.pendingInsight}
+                insight={state.pendingInsight?.insight || ''}
+                followUpQuestion={state.pendingInsight?.followUpQuestion || ''}
+                suggestedHabit={state.pendingInsight?.suggestedHabit}
+                suggestedIntention={state.pendingInsight?.suggestedIntention}
+                onTrackHabit={() => {
+                    setHasSeenFirstInsight(true);
+                    actions.setPendingInsight(null);
+                    setView('habits');
+                    // The HabitsView has its own add flow - we could pre-fill but for now just navigate
+                    if (state.pendingInsight?.suggestedHabit) {
+                        actions.handleAddHabit(state.pendingInsight.suggestedHabit.name, 'daily');
+                        actions.setToast({ message: `Added habit: ${state.pendingInsight.suggestedHabit.emoji} ${state.pendingInsight.suggestedHabit.name}`, id: Date.now() });
+                    }
+                }}
+                onSetGoal={() => {
+                    setHasSeenFirstInsight(true);
+                    actions.setPendingInsight(null);
+                    setView('intentions');
+                    // Add the suggested intention
+                    if (state.pendingInsight?.suggestedIntention) {
+                        actions.handleAddIntention(state.pendingInsight.suggestedIntention, null, false);
+                        actions.setToast({ message: 'Goal added!', id: Date.now() });
+                    }
+                }}
+                onExploreChat={() => {
+                    setHasSeenFirstInsight(true);
+                    const entryText = state.pendingInsight?.entryText || '';
+                    const followUp = state.pendingInsight?.followUpQuestion || '';
+                    actions.setPendingInsight(null);
+                    setView('chat');
+                    // Seed the chat with context
+                    if (entryText) {
+                        actions.handleSendMessage(entryText);
+                        setTimeout(() => {
+                            actions.setMessages(prev => [...prev, { sender: 'ai', text: followUp }]);
+                        }, 500);
+                    }
+                }}
+                onDismiss={() => {
+                    setHasSeenFirstInsight(true);
+                    actions.setPendingInsight(null);
+                }}
+            />
         </div>
     );
 };
