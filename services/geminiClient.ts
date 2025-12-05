@@ -9,7 +9,10 @@ export type AIProxyAction =
     | 'instant-insight'
     | 'analyze-habit'
     | 'extract-keywords'
-    | 'chat';
+    | 'chat'
+    | 'daily-reflection'
+    | 'weekly-reflection'
+    | 'monthly-reflection';
 
 interface AIProxyResponse<T> {
     success: boolean;

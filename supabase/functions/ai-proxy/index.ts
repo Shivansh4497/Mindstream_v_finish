@@ -16,7 +16,7 @@ const PRIMARY_MODEL = 'gemini-2.0-flash';
 const BACKUP_MODEL = 'gemini-2.5-flash';
 
 interface GeminiRequest {
-    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords';
+    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
     payload: Record<string, any>;
 }
 
@@ -220,6 +220,75 @@ Respond with ONLY JSON: {"keywords": ["term1", "term2"]}`;
 
                 const response = await callGemini(context);
                 result = { response };
+                break;
+            }
+
+            case 'daily-reflection': {
+                const { entries, intentions, habits } = payload;
+                const prompt = `Generate a Daily Reflection based on today's data. Respond with ONLY JSON.
+
+Entries:
+${entries || 'No entries today'}
+
+Goals/Intentions:
+${intentions || 'No active goals'}
+
+Habits:
+${habits || 'No habits tracked'}
+
+Task:
+1. Synthesize the user's day. Find connections between their mood (entries) and their actions (habits/goals).
+2. Highlight one key win and one gentle observation for improvement.
+3. Suggest 1-2 actionable intentions for tomorrow.
+
+Return: {"summary": "Your insightful summary...", "suggestions": [{"text": "Do X tomorrow", "timeframe": "daily"}]}`;
+
+                const response = await callGemini(prompt);
+                result = parseJSON(response);
+                break;
+            }
+
+            case 'weekly-reflection': {
+                const { entries, intentions } = payload;
+                const prompt = `Generate a Weekly Reflection. Respond with ONLY JSON.
+
+Entries from this week:
+${entries || 'No entries this week'}
+
+Goals/Intentions:
+${intentions || 'No active goals'}
+
+Task:
+1. Identify the dominant emotional theme of the week.
+2. Summarize progress on intentions.
+3. Offer a strategic focus for next week.
+
+Return: {"summary": "Your weekly synthesis...", "suggestions": [{"text": "Focus on X next week", "timeframe": "weekly"}]}`;
+
+                const response = await callGemini(prompt);
+                result = parseJSON(response);
+                break;
+            }
+
+            case 'monthly-reflection': {
+                const { entries, intentions } = payload;
+                const prompt = `Generate a Monthly Reflection. This is a high-level review. Respond with ONLY JSON.
+
+Entries (titles & sentiments):
+${entries || 'No entries this month'}
+
+Goals/Intentions:
+${intentions || 'No active goals'}
+
+Task:
+1. Summarize the "Chapter Title" for this month.
+2. Analyze how the user's sentiment has evolved.
+3. Suggest a Life/Monthly Goal for next month.
+
+Return: {"summary": "Your month in review...", "suggestions": [{"text": "Consider X for next month", "timeframe": "monthly"}]}`;
+
+                const response = await callGemini(prompt);
+                result = parseJSON(response);
                 break;
             }
 
