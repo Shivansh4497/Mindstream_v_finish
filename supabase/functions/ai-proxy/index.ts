@@ -10,24 +10,25 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-// Use gemini-2.0-flash which supports generateContent
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+// Model configuration with fallback
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const PRIMARY_MODEL = 'gemini-2.0-flash';
+const BACKUP_MODEL = 'gemini-2.5-flash';
 
 interface GeminiRequest {
     action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords';
     payload: Record<string, any>;
 }
 
-async function callGemini(prompt: string): Promise<string> {
-    console.log(`[AI Proxy] Calling Gemini, prompt length: ${prompt.length}`);
+async function callGeminiWithModel(model: string, prompt: string): Promise<string> {
+    const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${geminiKey}`;
+    console.log(`[AI Proxy] Calling ${model}, prompt length: ${prompt.length}`);
 
-    const response = await fetch(GEMINI_API_URL, {
+    const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            contents: [{
-                parts: [{ text: prompt }]
-            }],
+            contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 2048,
@@ -37,19 +38,25 @@ async function callGemini(prompt: string): Promise<string> {
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[AI Proxy] Gemini error ${response.status}:`, errorText);
+        console.error(`[AI Proxy] ${model} error ${response.status}:`, errorText);
         throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log(`[AI Proxy] Response received, candidates: ${result.candidates?.length}`);
-
     if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        console.error(`[AI Proxy] No text in response:`, JSON.stringify(result).slice(0, 500));
         throw new Error('No response from AI');
     }
 
     return result.candidates[0].content.parts[0].text;
+}
+
+async function callGemini(prompt: string): Promise<string> {
+    try {
+        return await callGeminiWithModel(PRIMARY_MODEL, prompt);
+    } catch (error: any) {
+        console.warn(`[AI Proxy] Primary model failed, trying backup...`);
+        return await callGeminiWithModel(BACKUP_MODEL, prompt);
+    }
 }
 
 function parseJSON<T>(text: string): T {
