@@ -1,76 +1,70 @@
-import { GoogleGenAI } from "@google/genai";
+import { supabase } from './supabaseClient';
 
-// Safe access to environment variables to prevent runtime crashes in browser environments
-const getApiKey = (): string => {
-    try {
-        // Preferred: Standard Node/Process env (Required by guidelines)
-        if (typeof process !== 'undefined' && process.env?.API_KEY) {
-            return process.env.API_KEY;
-        }
-    } catch (e) {
-        // Ignore reference errors if process is not defined
-    }
-    
-    try {
-        // Fallback: Standard Vite env
-        // @ts-ignore
-        if (typeof import.meta !== 'undefined' && import.meta.env) {
-            // Check for VITE_API_KEY (User's Vercel config)
-            // @ts-ignore
-            if (import.meta.env.VITE_API_KEY) {
-                // @ts-ignore
-                return import.meta.env.VITE_API_KEY;
-            }
-            // Legacy fallback
-            // @ts-ignore
-            if (import.meta.env.VITE_GEMINI_API_KEY) {
-                // @ts-ignore
-                return import.meta.env.VITE_GEMINI_API_KEY;
-            }
-        }
-    } catch (e) {}
+// Edge Function proxy for all AI calls - keeps API key secure on server
+const AI_PROXY_URL = 'ai-proxy';
 
-    return '';
-};
+export type AIProxyAction =
+    | 'process-entry'
+    | 'suggestions'
+    | 'instant-insight'
+    | 'analyze-habit'
+    | 'extract-keywords'
+    | 'chat';
 
-let ai: GoogleGenAI | null = null;
-const apiKey = getApiKey();
-
-if (apiKey) {
-    try {
-        ai = new GoogleGenAI({ apiKey });
-    } catch (e) {
-        console.error("Error initializing Gemini client.", e);
-    }
+interface AIProxyResponse<T> {
+    success: boolean;
+    data?: T;
+    error?: string;
 }
 
-export const GEMINI_API_KEY_AVAILABLE = !!ai;
-export const getAiClient = () => ai;
-
-const PRIMARY_MODEL = 'gemini-2.5-flash';
-const BACKUP_MODEL = 'gemini-1.5-flash';
-
-export async function callWithFallback<T>(operation: (model: string) => Promise<T>): Promise<T> {
-    try {
-        return await operation(PRIMARY_MODEL);
-    } catch (error: any) {
-        if (error.status === 503 || error.status === 429 || error.message?.includes('fetch failed')) {
-            console.warn(`Primary model failed. Switching to backup.`);
-            return await operation(BACKUP_MODEL);
-        }
-        throw error;
+/**
+ * Call the AI proxy Edge Function
+ * Automatically includes user authentication
+ */
+export async function callAIProxy<T>(
+    action: AIProxyAction,
+    payload: Record<string, any>
+): Promise<T> {
+    if (!supabase) {
+        throw new Error('Supabase client not initialized');
     }
+
+    const { data, error } = await supabase.functions.invoke<AIProxyResponse<T>>(AI_PROXY_URL, {
+        body: { action, payload }
+    });
+
+    if (error) {
+        console.error('[AI Proxy] Function error:', error);
+        throw new Error(error.message || 'AI service unavailable');
+    }
+
+    if (!data?.success) {
+        throw new Error(data?.error || 'AI request failed');
+    }
+
+    return data.data as T;
 }
 
+/**
+ * Verify AI service is available
+ * Just checks if the Edge Function is reachable
+ */
 export const verifyApiKey = async (): Promise<boolean> => {
-  if (!ai) throw new Error("AI client not initialized.");
-  await ai.models.generateContent({ model: PRIMARY_MODEL, contents: 'Hi' });
-  return true;
+    // With Edge Function, we don't need to verify client-side API key
+    // The function handles authentication
+    return true;
 };
 
+/**
+ * Parse JSON from AI responses (kept for backward compatibility)
+ */
 export const parseGeminiJson = <T>(jsonString: string): T => {
     let clean = jsonString.trim();
     const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (match && match[1]) clean = match[1];
     return JSON.parse(clean);
 };
+
+// Legacy exports for backward compatibility during migration
+export const GEMINI_API_KEY_AVAILABLE = true; // Always available via Edge Function
+export const getAiClient = () => null; // No longer needed

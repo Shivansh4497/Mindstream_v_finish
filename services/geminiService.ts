@@ -1,30 +1,15 @@
-
 import type { Entry, Message, HabitCategory, InstantInsight, EntrySuggestion, UserContext } from '../types';
-import { getAiClient, callWithFallback, parseGeminiJson, verifyApiKey, GEMINI_API_KEY_AVAILABLE } from './geminiClient';
+import { callAIProxy, verifyApiKey, parseGeminiJson, GEMINI_API_KEY_AVAILABLE } from './geminiClient';
 import { getPersonality, DEFAULT_PERSONALITY, PersonalityId } from '../config/personalities';
 
-export { verifyApiKey, GEMINI_API_KEY_AVAILABLE, getAiClient };
+export { verifyApiKey, GEMINI_API_KEY_AVAILABLE };
 
 // --- RAG HELPERS ---
 
 export const extractSearchKeywords = async (userQuery: string): Promise<string[]> => {
-    const ai = getAiClient();
-    if (!ai) return [];
-    const prompt = `Extract 2-4 key search terms from this query to find relevant past journal entries. Ignore filler words. 
-    Query: "${userQuery}"
-    Respond with a JSON object: { "keywords": ["term1", "term2"] }`;
-
     try {
-        return await callWithFallback(async (model) => {
-            // @ts-ignore
-            const response = await ai.models.generateContent({
-                model,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            });
-            const res = parseGeminiJson<{ keywords: string[] }>(response.text || "{}");
-            return res.keywords || [];
-        });
+        const result = await callAIProxy<{ keywords: string[] }>('extract-keywords', { query: userQuery });
+        return result.keywords || [];
     } catch (e) {
         console.warn("Failed to extract keywords:", e);
         return [];
@@ -69,14 +54,11 @@ const buildSystemContext = (context: UserContext): string => {
 }
 
 // --- CHAT ---
+// Chat uses a simplified non-streaming approach for now
+// Can be upgraded to streaming Edge Function later
 
 export const getChatResponseStream = async (history: Message[], context: UserContext) => {
-    const ai = getAiClient();
-    if (!ai) throw new Error("AI functionality is disabled.");
-
     const contextPrompt = buildSystemContext(context);
-
-    // Get personality from context or default
     const personalityId = (context.personalityId as PersonalityId) || DEFAULT_PERSONALITY;
     const personality = getPersonality(personalityId) || getPersonality(DEFAULT_PERSONALITY);
 
@@ -97,38 +79,34 @@ Use this information to answer my questions contextually.
         parts: [{ text: msg.text }],
     }));
 
-    // @ts-ignore
-    return callWithFallback(m => ai.models.generateContentStream({
-        model: m,
-        contents: [...chatHistory, { role: 'user', parts: [{ text: userPrompt }] }],
-        config: { systemInstruction }
-    }));
+    // Call the AI proxy with chat action
+    const result = await callAIProxy<{ response: string }>('chat', {
+        history: chatHistory,
+        userPrompt,
+        systemInstruction
+    });
+
+    // Return an async generator that yields the response at once
+    // This maintains compatibility with existing streaming code
+    return {
+        [Symbol.asyncIterator]: async function* () {
+            yield { text: result.response || '' };
+        }
+    };
 }
 
 // --- SILENT OBSERVER & BRIDGES ---
 
 export const generateEntrySuggestions = async (entryText: string): Promise<EntrySuggestion[] | null> => {
-    const ai = getAiClient();
-    if (!ai) return null;
     const isTest = entryText.startsWith("TEST:");
     console.log(`[SILENT OBSERVER] Analysis starting... Test: ${isTest}`);
 
-    const prompt = `Analyze this entry. Does the user express a clear need for a Habit, Intention, or Reflection?
-    Entry: "${entryText}"
-    Rules: ${isTest ? "TEST MODE: FORCE SUGGESTION." : "Be Strict: Return empty if just venting."}
-    Respond with JSON object: { "suggestions": [{ "type": "habit|intention|reflection", "label": "...", "data": {...} }] }`;
-
     try {
-        return await callWithFallback(async (model) => {
-            // @ts-ignore
-            const response = await ai.models.generateContent({
-                model,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            });
-            const result = parseGeminiJson<{ suggestions: EntrySuggestion[] }>(response.text || "{}");
-            return result.suggestions?.length > 0 ? result.suggestions : null;
+        const result = await callAIProxy<{ suggestions: EntrySuggestion[] }>('suggestions', {
+            entryText,
+            isTest
         });
+        return result.suggestions?.length > 0 ? result.suggestions : null;
     } catch (e) {
         console.warn("[SILENT OBSERVER] Failed:", e);
         return null;
@@ -138,70 +116,43 @@ export const generateEntrySuggestions = async (entryText: string): Promise<Entry
 // --- CORE PROCESSING ---
 
 export const processEntry = async (entryText: string): Promise<Omit<Entry, 'id' | 'user_id' | 'timestamp' | 'text'>> => {
-    const ai = getAiClient();
-    if (!ai) throw new Error("AI client not initialized.");
-    const prompt = `
-    Analyze this journal entry. 
-    1. Generate a short, punchy Title (max 5 words).
-    2. Assign 1-3 relevant Tags.
-    3. Determine Primary Sentiment (from: Joyful, Grateful, Proud, Hopeful, Content, Anxious, Frustrated, Sad, Overwhelmed, Confused, Reflective, Inquisitive, Observational).
-    4. Select a single Emoji that best represents the entry.
-    
-    Entry: "${entryText}"
-    
-    Respond with JSON: { "title": "...", "tags": ["..."], "primary_sentiment": "...", "emoji": "..." }
-  `;
-
-    return callWithFallback(async (model) => {
-        // @ts-ignore
-        const res = await ai.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json" } });
-        return parseGeminiJson(res.text || "{}");
-    });
+    try {
+        return await callAIProxy<Omit<Entry, 'id' | 'user_id' | 'timestamp' | 'text'>>('process-entry', {
+            entryText
+        });
+    } catch (e) {
+        console.error("[AI] Process entry failed:", e);
+        // Return defaults if AI fails
+        return { title: "Entry", tags: ["Unprocessed"], emoji: "📝", primary_sentiment: null };
+    }
 };
 
 export const analyzeHabit = async (habitName: string): Promise<{ emoji: string, category: HabitCategory }> => {
-    const ai = getAiClient();
-    if (!ai) return { emoji: "⚡️", category: "System" };
-    const prompt = `
-      Classify this habit into one of these categories: Health, Growth, Career, Finance, Connection, System.
-      Also assign a relevant Emoji.
-      Habit: "${habitName}"
-      JSON Response: { "emoji": "...", "category": "..." }
-    `;
     try {
-        return await callWithFallback(async (model) => {
-            // @ts-ignore
-            const res = await ai.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json" } });
-            return parseGeminiJson(res.text || "{}");
+        return await callAIProxy<{ emoji: string, category: HabitCategory }>('analyze-habit', {
+            habitName
         });
-    } catch (e) { return { emoji: "⚡️", category: "System" }; }
+    } catch (e) {
+        return { emoji: "⚡️", category: "System" };
+    }
 };
 
 export const generateInstantInsight = async (text: string, sentiment: string, lifeArea: string, trigger: string): Promise<InstantInsight> => {
-    const ai = getAiClient();
-    if (!ai) throw new Error("AI disabled.");
-    const prompt = `
-      You are a wise, empathetic coach helping someone reflect on their thoughts.
-      
-      USER CONTEXT:
-      - Feeling: "${sentiment}"
-      - Life Area: "${lifeArea}"  
-      - Trigger: "${trigger}"
-      - Their Entry: "${text}"
-      
-      RULES:
-      1. SPECIFICITY: Reference at least 2 specific words or phrases from their entry. Weave them naturally.
-      2. VARIED OPENINGS: Do NOT start with "It's completely understandable" or "It's natural to feel." Be creative.
-      3. EDGE CASE: If the entry is gibberish, under 3 words, or clearly a test, respond with a gentle invitation to share more.
-      4. INSIGHT: Offer a concrete perspective shift or comforting truth, not generic encouragement.
-      5. FOLLOW-UP: Ask ONE open-ended question that invites deeper reflection (never yes/no).
-      
-      RESPONSE FORMAT (JSON only):
-      { "insight": "Your 2-3 sentence insight here...", "followUpQuestion": "Your question here?" }
-    `;
-    return callWithFallback(async (model) => {
-        // @ts-ignore
-        const res = await ai.models.generateContent({ model, contents: prompt, config: { responseMimeType: "application/json" } });
-        return parseGeminiJson(res.text || "{}");
-    });
+    try {
+        const result = await callAIProxy<InstantInsight>('instant-insight', {
+            text,
+            sentiment,
+            lifeArea,
+            trigger
+        });
+
+        // Ensure confidence is a valid number
+        return {
+            ...result,
+            confidence: typeof result.confidence === 'number' ? result.confidence : 0.5
+        };
+    } catch (e) {
+        console.error("[AI] Instant insight failed:", e);
+        throw new Error("AI service unavailable");
+    }
 };

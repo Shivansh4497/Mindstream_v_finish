@@ -70,27 +70,33 @@ export const ChatView: React.FC<ChatViewProps> = ({ messages, isLoading, onAddSu
   return (
     <div className="h-full flex flex-col">
       {/* TTS Toggle Button */}
-      <div className="flex justify-end p-3 border-b border-white/5">
-        <button
-          onClick={toggleTTS}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${ttsEnabled
+      <div className="flex flex-col border-b border-white/5">
+        <div className="flex justify-end p-3">
+          <button
+            onClick={toggleTTS}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${ttsEnabled
               ? 'bg-brand-teal/20 text-brand-teal border border-brand-teal/30'
               : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
-            }`}
-          title={ttsEnabled ? 'Voice enabled' : 'Voice disabled'}
-        >
-          {ttsEnabled ? (
-            <>
-              <Volume2 className="w-4 h-4" />
-              <span>Voice On</span>
-            </>
-          ) : (
-            <>
-              <VolumeX className="w-4 h-4" />
-              <span>Voice Off</span>
-            </>
-          )}
-        </button>
+              }`}
+            title={ttsEnabled ? 'Voice enabled' : 'Voice disabled'}
+          >
+            {ttsEnabled ? (
+              <>
+                <Volume2 className="w-4 h-4" />
+                <span>Voice On</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-4 h-4" />
+                <span>Voice Off</span>
+              </>
+            )}
+          </button>
+        </div>
+        {/* Ephemerality indicator */}
+        <div className="text-xs text-gray-500 text-center pb-2">
+          💡 Conversations reset when you leave this tab
+        </div>
       </div>
 
       <main className="flex-grow overflow-y-auto p-4">

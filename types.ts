@@ -113,6 +113,7 @@ export interface Message {
 export interface InstantInsight {
   insight: string;
   followUpQuestion: string;
+  confidence: number;  // 0.0-1.0 confidence score for quality gating
 }
 
 export interface UserContext {

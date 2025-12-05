@@ -682,6 +682,57 @@ export const getUserPersonality = async (userId: string): Promise<string> => {
     }
 }
 
+// User Flags for cross-device UX state persistence
+export interface UserFlags {
+    onboardingStep?: number;
+    hasSeenFirstInsight?: boolean;
+    hasVisitedInsights?: boolean;
+}
+
+export const getUserFlags = async (userId: string): Promise<UserFlags> => {
+    if (!supabase) return {};
+    try {
+        const { data, error } = await supabase
+            .from('user_preferences')
+            .select('flags')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.warn('Error fetching user flags:', error);
+            return {};
+        }
+
+        return (data?.flags as UserFlags) || {};
+    } catch (e) {
+        console.warn('Failed to get user flags:', e);
+        return {};
+    }
+};
+
+export const updateUserFlags = async (userId: string, flags: Partial<UserFlags>): Promise<void> => {
+    if (!supabase) return;
+    try {
+        // First, get existing flags to merge
+        const existingFlags = await getUserFlags(userId);
+        const mergedFlags = { ...existingFlags, ...flags };
+
+        // Upsert the record
+        const { error } = await (supabase as any)
+            .from('user_preferences')
+            .upsert({
+                user_id: userId,
+                flags: mergedFlags
+            }, { onConflict: 'user_id' });
+
+        if (error) {
+            console.error('Error updating user flags:', error);
+        }
+    } catch (e) {
+        console.error('Failed to update user flags:', e);
+    }
+};
+
 export const getUserContext = async (userId: string): Promise<UserContext> => {
     if (!supabase) throw new Error("Supabase not initialized");
 
@@ -763,11 +814,13 @@ export type AnalyticsEvent =
     | 'onboarding_completed'
     | 'entry_created'
     | 'insight_modal_action'
+    | 'insight_modal_shown'  // NEW: when modal is displayed
     | 'habit_completed'
     | 'insights_unlocked'
     | 'app_opened'
     | 'chat_message_sent'
-    | 'voice_input_used';
+    | 'voice_input_used'
+    | 'error_event';  // NEW: for AI/system errors
 
 export const logEvent = async (
     userId: string,

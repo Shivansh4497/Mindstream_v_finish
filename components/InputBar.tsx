@@ -37,7 +37,7 @@ interface SpeechRecognitionErrorEvent extends Event {
 // End of Web Speech API type definitions.
 
 interface InputBarProps {
-  onAddEntry: (text: string) => void;
+  onAddEntry: (text: string, viaVoice: boolean) => void;
 }
 
 const GUIDED_PROMPTS = [
@@ -60,6 +60,7 @@ if (recognition) {
 export const InputBar: React.FC<InputBarProps> = ({ onAddEntry }) => {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [usedVoice, setUsedVoice] = useState(false); // Track if voice was used for this entry
   const [isProcessing, setIsProcessing] = useState(false);
   const recognitionRef = useRef(recognition);
   const { toast, showToast, hideToast } = useToast();
@@ -78,6 +79,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onAddEntry }) => {
       }
       if (finalTranscript) {
         setText(prevText => prevText + (prevText.length > 0 ? ' ' : '') + finalTranscript);
+        setUsedVoice(true); // Mark that voice was used
       }
     };
 
@@ -101,8 +103,9 @@ export const InputBar: React.FC<InputBarProps> = ({ onAddEntry }) => {
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (text.trim()) {
-      onAddEntry(text.trim());
+      onAddEntry(text.trim(), usedVoice);
       setText('');
+      setUsedVoice(false); // Reset voice flag
 
       // Show success feedback
       showToast('Entry saved ✓', 'success');

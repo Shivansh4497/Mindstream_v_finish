@@ -50,6 +50,7 @@ export const useAppLogic = () => {
         entryText: string;
         suggestedHabit?: { name: string; emoji: string };
         suggestedIntention?: string;
+        confidence?: number;  // 0.0-1.0 confidence score for quality gating
     } | null>(null);
 
     const isMounted = useRef(true);
@@ -168,7 +169,7 @@ export const useAppLogic = () => {
         }
     };
 
-    const handleAddEntry = async (text: string) => {
+    const handleAddEntry = async (text: string, viaVoice: boolean = false) => {
         if (!user) return;
         const tempId = `temp-${Date.now()}`;
         const tempEntry: Entry = {
@@ -177,11 +178,21 @@ export const useAppLogic = () => {
         };
         setEntries(prev => [tempEntry, ...prev]);
 
+        // Calculate entry index for analytics (before adding the new one)
+        const entryIndex = entries.filter(e => !e.id.startsWith('temp-')).length + 1;
+
         try {
             let processedData: Omit<Entry, 'id' | 'user_id' | 'timestamp' | 'text'> = { title: "Entry", tags: ["Unprocessed"], emoji: "📝", primary_sentiment: null };
             if (aiStatus === 'ready') {
                 try { processedData = await gemini.processEntry(text); }
-                catch (error) { console.warn("AI processing failed"); }
+                catch (error) {
+                    console.warn("AI processing failed");
+                    // Log AI error event
+                    db.logEvent(user.id, 'error_event', {
+                        source: 'ai_process_entry',
+                        message: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                }
             }
 
             if (!isMounted.current) return;
@@ -192,11 +203,19 @@ export const useAppLogic = () => {
                 setEntries(prev => prev.map(e => e.id === tempId ? savedEntry : e));
             }
 
-            // Analytics: track entry creation
+            // Enhanced analytics: track entry creation with source, entry_index, and via_voice
             db.logEvent(user.id, 'entry_created', {
                 word_count: text.split(' ').length,
-                sentiment: processedData.primary_sentiment || 'unknown'
+                char_count: text.length,
+                sentiment: processedData.primary_sentiment || 'unknown',
+                entry_index: entryIndex,
+                via_voice: viaVoice
             });
+
+            // Also log voice_input_used separately if voice was used
+            if (viaVoice) {
+                db.logEvent(user.id, 'voice_input_used', { context: 'stream_entry' });
+            }
 
             if (aiStatus === 'ready' && text.split(' ').length > 3) {
                 gemini.generateEntrySuggestions(text).then(async (suggestions) => {
