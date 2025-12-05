@@ -74,12 +74,29 @@ export const MindstreamApp: React.FC = () => {
     const hasSeenInsightKey = user ? `hasSeenFirstInsight_${user.id}` : 'hasSeenFirstInsight';
     const [hasSeenFirstInsight, setHasSeenFirstInsight] = useLocalStorage<boolean>(hasSeenInsightKey, false);
 
+    // Progressive disclosure: track if user has visited Insights tab after unlock
+    const hasVisitedInsightsKey = user ? `hasVisitedInsights_${user.id}` : 'hasVisitedInsights';
+    const [hasVisitedInsights, setHasVisitedInsights] = useLocalStorage<boolean>(hasVisitedInsightsKey, false);
+
+    // Count real entries (exclude temp entries)
+    const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
+    const insightsUnlocked = realEntryCount >= 5;
+
     // Legacy migration: users who already saw privacy screen skip onboarding
     useEffect(() => {
         if (legacyPrivacy && onboardingStep === ONBOARDING_NOT_STARTED) {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
         }
     }, [legacyPrivacy, onboardingStep]);
+
+    // Progressive disclosure: show toast when Insights tab unlocks
+    useEffect(() => {
+        if (insightsUnlocked && !hasVisitedInsights) {
+            // Only show toast once - when they first hit 5 entries
+            // The badge will persist until they visit the tab
+            actions.setToast({ message: '🎉 Insights tab unlocked!', id: Date.now() });
+        }
+    }, [insightsUnlocked]);
 
     // Generate insight for Quick Start users after their first entry
     useEffect(() => {
@@ -330,7 +347,20 @@ export const MindstreamApp: React.FC = () => {
                 </AnimatePresence>
             </main>
 
-            {view !== 'settings' && <NavBar activeView={view} onViewChange={setView} />}
+            {view !== 'settings' && (
+                <NavBar
+                    activeView={view}
+                    onViewChange={(newView) => {
+                        // Clear Insights badge when user visits Insights tab
+                        if (newView === 'insights' && !hasVisitedInsights) {
+                            setHasVisitedInsights(true);
+                        }
+                        setView(newView);
+                    }}
+                    entryCount={realEntryCount}
+                    showInsightsBadge={insightsUnlocked && !hasVisitedInsights}
+                />
+            )}
 
             {/* Modals */}
             {showSearchModal && <SearchModal entries={state.entries} reflections={state.reflections} onClose={() => setShowSearchModal(false)} />}
