@@ -359,7 +359,7 @@ export const MindstreamApp: React.FC = () => {
                                     isGenerating={state.isGeneratingReflection}
                                     onAddSuggestion={(s) => actions.handleAddIntention(s.text, s.timeframe)}
                                     aiStatus={state.aiStatus}
-                                    onDebug={() => reflections.getRawReflectionForDebug(state.entries, state.intentions).then(res => actions.setToast({ message: "Debug check console", id: 1 }))}
+                                    onDebug={() => reflections.getRawReflectionForDebug().then(res => actions.setToast({ message: "Debug check console", id: 1 }))}
                                     debugOutput={null}
                                     // Life Dashboard Props
                                     onOpenYearlyReview={async () => {
