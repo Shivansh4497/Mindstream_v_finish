@@ -1,8 +1,8 @@
 import type { Entry, Message, HabitCategory, InstantInsight, EntrySuggestion, UserContext } from '../types';
-import { callAIProxy, verifyApiKey, parseGeminiJson, GEMINI_API_KEY_AVAILABLE } from './geminiClient';
+import { callAIProxy, verifyApiKey, parseGeminiJson, GEMINI_API_KEY_AVAILABLE, getAiClient } from './geminiClient';
 import { getPersonality, DEFAULT_PERSONALITY, PersonalityId } from '../config/personalities';
 
-export { verifyApiKey, GEMINI_API_KEY_AVAILABLE };
+export { verifyApiKey, GEMINI_API_KEY_AVAILABLE, getAiClient };
 
 // --- RAG HELPERS ---
 

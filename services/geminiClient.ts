@@ -68,3 +68,12 @@ export const parseGeminiJson = <T>(jsonString: string): T => {
 // Legacy exports for backward compatibility during migration
 export const GEMINI_API_KEY_AVAILABLE = true; // Always available via Edge Function
 export const getAiClient = () => null; // No longer needed
+
+// Legacy callWithFallback - these services need to be migrated to use callAIProxy
+// For now, this stub will cause them to throw/return fallback values
+export async function callWithFallback<T>(operation: (model: string) => Promise<T>): Promise<T> {
+    // Since getAiClient returns null, any service using this pattern will need migration
+    // For now, we throw to make it clear these need updating
+    throw new Error('callWithFallback is deprecated. Please migrate to callAIProxy.');
+}
+
