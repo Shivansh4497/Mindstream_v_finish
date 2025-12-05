@@ -192,6 +192,12 @@ export const useAppLogic = () => {
                 setEntries(prev => prev.map(e => e.id === tempId ? savedEntry : e));
             }
 
+            // Analytics: track entry creation
+            db.logEvent(user.id, 'entry_created', {
+                word_count: text.split(' ').length,
+                sentiment: processedData.primary_sentiment || 'unknown'
+            });
+
             if (aiStatus === 'ready' && text.split(' ').length > 3) {
                 gemini.generateEntrySuggestions(text).then(async (suggestions) => {
                     if (!isMounted.current) return;
@@ -290,6 +296,11 @@ export const useAppLogic = () => {
                     if (updatedHabit.current_streak !== optimisticStreak) {
                         setHabits(prev => prev.map(h => h.id === habitId ? updatedHabit : h));
                     }
+
+                    // Analytics: track habit completion
+                    if (willBeCompleted) {
+                        db.logEvent(user.id, 'habit_completed', { habit_name: habit.name });
+                    }
                 }
             } catch (error) {
                 console.error("Error syncing habit:", error);
@@ -321,6 +332,9 @@ export const useAppLogic = () => {
         const newUserMsg: Message = { sender: 'user', text };
         setMessages(prev => [...prev, newUserMsg]);
         setIsChatLoading(true);
+
+        // Analytics: track chat message
+        db.logEvent(user.id, 'chat_message_sent', { word_count: text.split(' ').length });
 
         try {
             const context = initialContext || await db.getUserContext(user.id);

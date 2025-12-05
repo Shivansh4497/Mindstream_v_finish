@@ -91,10 +91,11 @@ export const MindstreamApp: React.FC = () => {
 
     // Progressive disclosure: show toast when Insights tab unlocks
     useEffect(() => {
-        if (insightsUnlocked && !hasVisitedInsights) {
+        if (insightsUnlocked && !hasVisitedInsights && user) {
             // Only show toast once - when they first hit 5 entries
             // The badge will persist until they visit the tab
             actions.setToast({ message: '🎉 Insights tab unlocked!', id: Date.now() });
+            db.logEvent(user.id, 'insights_unlocked', {});
         }
     }, [insightsUnlocked]);
 
@@ -153,7 +154,10 @@ export const MindstreamApp: React.FC = () => {
     if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
         return (
             <LandingScreen
-                onQuickStart={() => setOnboardingStep(ONBOARDING_QUICK_START)}
+                onQuickStart={() => {
+                    setOnboardingStep(ONBOARDING_QUICK_START);
+                    db.logEvent(user.id, 'onboarding_completed', { path: 'quick_start' });
+                }}
                 onGuidedSetup={() => setOnboardingStep(2)} // 2 = start guided wizard
             />
         );
@@ -163,6 +167,7 @@ export const MindstreamApp: React.FC = () => {
     if (onboardingStep >= 2 && onboardingStep < ONBOARDING_GUIDED_COMPLETE && user) {
         return <OnboardingWizard userId={user.id} onComplete={(dest, context, q) => {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
+            db.logEvent(user.id, 'onboarding_completed', { path: 'guided' });
             if (dest === 'chat' && context && q) {
                 setView('chat');
                 actions.handleSendMessage(context); // Seeding context
@@ -401,6 +406,7 @@ export const MindstreamApp: React.FC = () => {
                     setHasSeenFirstInsight(true);
                     actions.setPendingInsight(null);
                     setView('habits');
+                    if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'habit' });
                     // The HabitsView has its own add flow - we could pre-fill but for now just navigate
                     if (state.pendingInsight?.suggestedHabit) {
                         actions.handleAddHabit(state.pendingInsight.suggestedHabit.name, 'daily');
@@ -411,6 +417,7 @@ export const MindstreamApp: React.FC = () => {
                     setHasSeenFirstInsight(true);
                     actions.setPendingInsight(null);
                     setView('intentions');
+                    if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'goal' });
                     // Add the suggested intention
                     if (state.pendingInsight?.suggestedIntention) {
                         actions.handleAddIntention(state.pendingInsight.suggestedIntention, null, false);
@@ -423,6 +430,7 @@ export const MindstreamApp: React.FC = () => {
                     const followUp = state.pendingInsight?.followUpQuestion || '';
                     actions.setPendingInsight(null);
                     setView('chat');
+                    if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'chat' });
                     // Seed the chat with context
                     if (entryText) {
                         actions.handleSendMessage(entryText);
@@ -434,6 +442,7 @@ export const MindstreamApp: React.FC = () => {
                 onDismiss={() => {
                     setHasSeenFirstInsight(true);
                     actions.setPendingInsight(null);
+                    if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'dismiss' });
                 }}
             />
         </div>

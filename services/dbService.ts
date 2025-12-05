@@ -754,3 +754,36 @@ export const updateNudgeStatus = async (nudgeId: string, status: 'accepted' | 'd
         .update({ status, acted_on_at: new Date().toISOString() })
         .eq('id', nudgeId);
 };
+
+// ============================================
+// Analytics Functions
+// ============================================
+
+export type AnalyticsEvent =
+    | 'onboarding_completed'
+    | 'entry_created'
+    | 'insight_modal_action'
+    | 'habit_completed'
+    | 'insights_unlocked'
+    | 'app_opened'
+    | 'chat_message_sent'
+    | 'voice_input_used';
+
+export const logEvent = async (
+    userId: string,
+    eventName: AnalyticsEvent,
+    properties?: Record<string, any>
+): Promise<void> => {
+    if (!supabase) return;
+
+    try {
+        await supabase.from('analytics_events').insert({
+            user_id: userId,
+            event_name: eventName,
+            properties: properties || {}
+        });
+    } catch (error) {
+        // Silent fail - analytics should never block user actions
+        console.warn('Analytics event failed:', eventName, error);
+    }
+};
