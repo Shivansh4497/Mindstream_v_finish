@@ -319,6 +319,7 @@ export interface EvaluationSummary {
     failureModes: Record<string, number>;
     worstCases: EvaluationResult[];
     bestCases: EvaluationResult[];
+    allResults: EvaluationResult[];
     judgeModel: JudgeModel;
 }
 
@@ -630,6 +631,7 @@ export async function runFullEvaluation(
         failureModes,
         worstCases,
         bestCases,
+        allResults: results,
         judgeModel: currentJudgeConfig.model
     };
 }

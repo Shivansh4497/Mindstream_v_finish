@@ -70,6 +70,7 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
 
             setSummary(evalSummary);
             setResults([...evalSummary.bestCases, ...evalSummary.worstCases]);
+            setAllResults(evalSummary.allResults);
         } catch (e: any) {
             setError(e.message || 'Evaluation failed');
         } finally {
@@ -88,6 +89,61 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
         return passed
             ? <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-bold">PASS</span>
             : <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-bold">FAIL</span>;
+    };
+
+    const [allResults, setAllResults] = useState<EvaluationResult[]>([]);
+
+    // Export function for manual cross-validation
+    const exportReport = () => {
+        if (!summary || allResults.length === 0) return;
+
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                judgeModel: summary.judgeModel,
+                totalCases: summary.totalCases,
+                passedCases: summary.passedCases,
+                averageScore: summary.averageScore,
+                passRate: `${((summary.passedCases / summary.totalCases) * 100).toFixed(1)}%`
+            },
+            scoresByCriterion: summary.scoresByCriterion,
+            scoresByCategory: summary.scoresByCategory,
+            failureModes: summary.failureModes,
+            detailedResults: allResults.map(r => ({
+                testCaseId: r.testCase.id,
+                category: r.testCase.category,
+                sentiment: r.testCase.sentiment,
+                entry: r.testCase.entry,
+                generatedInsight: r.insight.insight,
+                generatedFollowUp: r.insight.followUpQuestion,
+                scores: {
+                    relevance: r.scores.relevance.score,
+                    specificity: r.scores.specificity.score,
+                    actionability: r.scores.actionability.score,
+                    empathy: r.scores.empathy.score,
+                    followUpQuality: r.scores.follow_up_quality.score,
+                    average: r.averageScore
+                },
+                reasoning: {
+                    relevance: r.scores.relevance.reasoning,
+                    specificity: r.scores.specificity.reasoning,
+                    actionability: r.scores.actionability.reasoning,
+                    empathy: r.scores.empathy.reasoning,
+                    followUpQuality: r.scores.follow_up_quality.reasoning
+                },
+                passed: r.passed,
+                failureMode: r.scores.failure_mode,
+                latencyMs: r.latencyMs
+            }))
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `insight_eval_${summary.judgeModel}_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -111,8 +167,8 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
                                 key={option.value}
                                 onClick={() => setSelectedModel(option.value)}
                                 className={`p-3 rounded-lg border transition-all text-left ${selectedModel === option.value
-                                        ? 'border-brand-teal bg-brand-teal/10 text-white'
-                                        : 'border-gray-700 bg-mindstream-bg-elevated text-gray-400 hover:border-gray-500'
+                                    ? 'border-brand-teal bg-brand-teal/10 text-white'
+                                    : 'border-gray-700 bg-mindstream-bg-elevated text-gray-400 hover:border-gray-500'
                                     }`}
                             >
                                 <div className="font-medium text-sm">{option.label}</div>
@@ -138,7 +194,7 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
                 </div>
 
                 {/* Controls */}
-                <div className="mb-8 flex gap-4 items-center">
+                <div className="mb-8 flex gap-4 items-center flex-wrap">
                     <button
                         onClick={runValidation}
                         disabled={isRunning || !apiKey}
@@ -146,6 +202,14 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
                     >
                         {isRunning ? `Running (${progress.completed}/${progress.total})...` : '🔬 Run Full Evaluation'}
                     </button>
+                    {summary && allResults.length > 0 && (
+                        <button
+                            onClick={exportReport}
+                            className="px-6 py-3 rounded-lg font-bold bg-purple-600/20 text-purple-400 border border-purple-500/30 hover:bg-purple-600/30"
+                        >
+                            📥 Export for Cross-Validation
+                        </button>
+                    )}
                     <span className="text-gray-500 text-sm">
                         {TEST_CASES.length} test cases • ~{Math.ceil(TEST_CASES.length * 2 / 60)} min
                     </span>

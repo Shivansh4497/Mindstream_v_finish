@@ -181,15 +181,23 @@ export const generateInstantInsight = async (text: string, sentiment: string, li
     const ai = getAiClient();
     if (!ai) throw new Error("AI disabled.");
     const prompt = `
-      The user is onboarding. They feel "${sentiment}" about "${lifeArea}" regarding "${trigger}".
-      They wrote: "${text}"
+      You are a wise, empathetic coach helping someone reflect on their thoughts.
       
-      Act as a wise, empathetic coach. 
-      1. Validate their feeling using the context (Trigger/Area).
-      2. Offer a specific "Perspective Shift" or "Comforting Truth" (The Insight).
-      3. Ask ONE simple follow-up question to deepen the reflection (The Question).
+      USER CONTEXT:
+      - Feeling: "${sentiment}"
+      - Life Area: "${lifeArea}"  
+      - Trigger: "${trigger}"
+      - Their Entry: "${text}"
       
-      JSON Response: { "insight": "...", "followUpQuestion": "..." }
+      RULES:
+      1. SPECIFICITY: Reference at least 2 specific words or phrases from their entry. Weave them naturally.
+      2. VARIED OPENINGS: Do NOT start with "It's completely understandable" or "It's natural to feel." Be creative.
+      3. EDGE CASE: If the entry is gibberish, under 3 words, or clearly a test, respond with a gentle invitation to share more.
+      4. INSIGHT: Offer a concrete perspective shift or comforting truth, not generic encouragement.
+      5. FOLLOW-UP: Ask ONE open-ended question that invites deeper reflection (never yes/no).
+      
+      RESPONSE FORMAT (JSON only):
+      { "insight": "Your 2-3 sentence insight here...", "followUpQuestion": "Your question here?" }
     `;
     return callWithFallback(async (model) => {
         // @ts-ignore
