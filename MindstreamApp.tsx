@@ -6,6 +6,7 @@ import { Header } from './components/Header';
 import { NavBar, View } from './components/NavBar';
 import { Stream } from './components/Stream';
 import { InputBar } from './components/InputBar';
+import { LandingScreen } from './components/LandingScreen';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { SearchModal } from './components/SearchModal';
 import { ChatView } from './components/ChatView';
@@ -36,7 +37,10 @@ import * as reflections from './services/reflectionService';
 import * as db from './services/dbService';
 import type { Entry, IntentionTimeframe, Habit, HabitFrequency } from './types';
 
-const ONBOARDING_COMPLETE_STEP = 5;
+// Onboarding states: 0 = not started, 1 = quick start chosen, 5 = guided complete
+const ONBOARDING_NOT_STARTED = 0;
+const ONBOARDING_QUICK_START = 1;
+const ONBOARDING_GUIDED_COMPLETE = 5;
 
 export const MindstreamApp: React.FC = () => {
     const { user } = useAuth();
@@ -60,11 +64,16 @@ export const MindstreamApp: React.FC = () => {
     const [isGeneratingYearly, setIsGeneratingYearly] = useState(false);
 
     // Onboarding State
+    // 0 = not started (show Landing), 1 = quick start (go to app), 5 = guided complete
     const onboardingKey = user ? `onboardingStep_${user.id}` : 'onboardingStep';
-    const [onboardingStep, setOnboardingStep] = useLocalStorage<number>(onboardingKey, 0);
+    const [onboardingStep, setOnboardingStep] = useLocalStorage<number>(onboardingKey, ONBOARDING_NOT_STARTED);
     const [legacyPrivacy] = useLocalStorage('hasSeenPrivacy', false);
+
+    // Legacy migration: users who already saw privacy screen skip onboarding
     useEffect(() => {
-        if (legacyPrivacy && onboardingStep === 0) setOnboardingStep(ONBOARDING_COMPLETE_STEP);
+        if (legacyPrivacy && onboardingStep === ONBOARDING_NOT_STARTED) {
+            setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
+        }
     }, [legacyPrivacy, onboardingStep]);
 
     // Chat Starters - Using the new reflectionService
@@ -78,9 +87,20 @@ export const MindstreamApp: React.FC = () => {
         }
     }, [view, state.messages, state.aiStatus]);
 
-    if (onboardingStep < ONBOARDING_COMPLETE_STEP && user) {
+    // Show Landing Screen for new users
+    if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
+        return (
+            <LandingScreen
+                onQuickStart={() => setOnboardingStep(ONBOARDING_QUICK_START)}
+                onGuidedSetup={() => setOnboardingStep(2)} // 2 = start guided wizard
+            />
+        );
+    }
+
+    // Show Guided Onboarding Wizard (steps 2-4 go through wizard)
+    if (onboardingStep >= 2 && onboardingStep < ONBOARDING_GUIDED_COMPLETE && user) {
         return <OnboardingWizard userId={user.id} onComplete={(dest, context, q) => {
-            setOnboardingStep(ONBOARDING_COMPLETE_STEP);
+            setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
             if (dest === 'chat' && context && q) {
                 setView('chat');
                 actions.handleSendMessage(context); // Seeding context
