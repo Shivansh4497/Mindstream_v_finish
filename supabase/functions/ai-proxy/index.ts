@@ -10,9 +10,9 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-1.5-flash-latest';
-const BACKUP_MODEL = 'gemini-1.5-pro-latest';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1/models';
+const PRIMARY_MODEL = 'gemini-1.5-flash';
+const BACKUP_MODEL = 'gemini-1.5-pro';
 
 interface GeminiRequest {
     action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords';
