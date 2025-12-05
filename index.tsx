@@ -24,7 +24,7 @@ if (!isConfigured) {
   }
   if (!GEMINI_API_KEY_AVAILABLE) {
     missingServices.push('Google Gemini AI');
-    requiredVariables.push('VITE_API_KEY');
+    requiredVariables.push('GEMINI_API_KEY (Supabase Secret)');
   }
 
   root.render(

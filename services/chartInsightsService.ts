@@ -1,4 +1,4 @@
-import { getAiClient, callWithFallback } from './geminiClient';
+import { callAIProxy } from './geminiClient';
 
 interface ChartInsightsInput {
     entries: Array<{
@@ -27,101 +27,51 @@ interface ChartInsightsOutput {
 export async function generateChartInsights(
     data: ChartInsightsInput
 ): Promise<ChartInsightsOutput> {
-    const ai = getAiClient();
-    if (!ai) {
-        throw new Error('AI client not initialized. Please check your API key.');
-    }
+    try {
+        // Build data summary for the prompt
+        const entriesSummary = data.entries.slice(0, 10).map(e =>
+            `${e.timestamp}: ${e.primary_sentiment || 'neutral'} - ${e.title || ''}`
+        ).join('\n');
 
-    const prompt = `You are analyzing a user's journaling data to generate actionable insights for their data visualization charts.
+        const habitsSummary = data.habits.map(h => `${h.emoji} ${h.name}`).join(', ');
+
+        const result = await callAIProxy<ChartInsightsOutput>('chat', {
+            history: [],
+            userPrompt: `Analyze this journaling data and generate insights. Respond with ONLY JSON.
 
 **Data Summary:**
 - ${data.entries.length} journal entries over the last 30 days
-- ${data.habits.length} habits being tracked
+- ${data.habits.length} habits: ${habitsSummary}
 - ${data.habitLogs.length} habit completions logged
 
-**Habits:**
-${data.habits.map(h => `- ${h.emoji} ${h.name}`).join('\n')}
+**Recent Entries:**
+${entriesSummary}
 
-**Recent Entries (sample):**
-${data.entries.slice(0, 10).map(e => `${e.timestamp}: ${e.primary_sentiment || 'neutral'} - ${e.title || ''}`).join('\n')}
+**Generate these 4 insights:**
 
-**Task:**
-Generate 4 types of insights:
+1. **dailyPulse**: 2-3 sentence holistic summary (coach-like, warm, actionable)
+2. **correlation**: One line about habit-mood correlation (e.g. "You feel 35% better when you meditate")
+3. **sentiment**: One line about mood trends (e.g. "You bounced back from a hard week—great resilience")
+4. **heatmaps**: Array of insights for each habit (one line each)
 
-0. **Daily Pulse** (holistic summary):
-   - Synthesize ALL data into 2-3 sentences
-   - Structure: [Progress Acknowledgment] + [Key Pattern] + [Actionable Suggestion]
-   - Example: "You're building momentum with Reading (3-day streak!), but your mood dipped slightly this week. Try a lighter session today—your best days happen when you ease in."
-   - Be warm, specific, and coach-like
-
-1. **Correlation Insight** (for the main correlation chart):
-   - Analyze if any habit shows a clear correlation with positive mood
-   - If positive: "You feel 35% better when you meditate."
-   - If negative: "Reading seems to drain you (-3%). Try doing it in the morning?" (Suggest an experiment)
-   - If neutral: "No clear pattern yet. Try increasing the duration?"
-
-2. **Sentiment Insight** (for mood flow timeline):
-   - Identify trends (improving, declining, stable)
-   - Be a compassionate coach: "You bounced back from a hard week—great resilience."
-   - Avoid robotic descriptions like "Mood is trending up."
-
-3. **Heatmap Insights** (one for each habit):
-   - Focus on the *why*, not just the *what*
-   - "You miss Mondays often. Maybe the goal is too big for a busy day?"
-   - "Great streak! You're building a solid routine."
-
-**Rules:**
-- Each insight must be ONE LINE ONLY (max 120 characters)
-- Be specific and data-driven, not generic
-- Use emojis sparingly (max 1 per insight)
-- Focus on actionability, not just description
-
-Return ONLY valid JSON in this exact format:
-{
-  "dailyPulse": "...",
-  "correlation": "...",
-  "sentiment": "...",
-  "heatmaps": ["...", "..."]
-}`;
-
-    try {
-        const result = await callWithFallback(async (model) => {
-            // @ts-ignore
-            const response = await ai.models.generateContent({
-                model,
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: 'application/json',
-                    responseSchema: {
-                        type: 'object',
-                        properties: {
-                            dailyPulse: { type: 'string' },
-                            correlation: { type: 'string' },
-                            sentiment: { type: 'string' },
-                            heatmaps: {
-                                type: 'array',
-                                items: { type: 'string' }
-                            }
-                        },
-                        required: ['dailyPulse', 'correlation', 'sentiment', 'heatmaps']
-                    }
-                }
-            });
-
-            // The SDK returns the text directly, already parsed
-            const text = response.text || "{}";
-
-            // Clean up any markdown code blocks if present
-            let cleanText = text.trim();
-            const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (match && match[1]) {
-                cleanText = match[1];
-            }
-
-            return cleanText;
+Return JSON: {"dailyPulse": "...", "correlation": "...", "sentiment": "...", "heatmaps": ["...", "..."]}`,
+            systemInstruction: 'You are a wellness data analyst. Be warm, specific, and coach-like. Each insight should be one line max (120 chars). Return only valid JSON.'
         });
 
-        const parsed = JSON.parse(result);
+        // Parse the response - it might be wrapped in a response object
+        let parsed: ChartInsightsOutput;
+        if ('response' in result) {
+            // Extract JSON from the chat response
+            const responseText = (result as any).response || '{}';
+            const match = responseText.match(/\{[\s\S]*\}/);
+            if (match) {
+                parsed = JSON.parse(match[0]);
+            } else {
+                throw new Error('Could not parse JSON from response');
+            }
+        } else {
+            parsed = result;
+        }
 
         return {
             dailyPulse: parsed.dailyPulse || 'Keep tracking your habits and mood to unlock personalized insights.',

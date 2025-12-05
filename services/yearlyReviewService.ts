@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Entry, Habit, Intention, Reflection } from '../types';
-import { getAiClient } from './geminiService';
+import { callAIProxy } from './geminiClient';
 
 export interface YearlyStats {
     totalEntries: number;
@@ -55,7 +55,7 @@ export const generateYearlyStats = (entries: Entry[], habits: Habit[], intention
     const mostActiveMonth = Object.entries(monthCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
 
     // 5. Completions
-    const totalHabitsCompleted = habitLogs.length; // Assuming we pass all logs for the year
+    const totalHabitsCompleted = habitLogs.length;
     const intentionsCompleted = intentions.filter(i => i.status === 'completed').length;
 
     return {
@@ -88,10 +88,7 @@ export const generateYearlyReview = async (userId: string, year: number): Promis
     const intentions = intentionsRes.data || [];
     const reflections = reflectionsRes.data || [];
 
-    // We need habit logs for the year to count completions accurately
-    // For now, we'll use a simplified count or fetch logs if needed. 
-    // Let's assume we fetch logs separately or estimate.
-    // To be precise, let's fetch logs.
+    // Fetch habit logs
     const { data: habitLogs } = await supabase.from('habit_logs')
         .select('*')
         .gte('completed_at', startDate)
@@ -99,51 +96,69 @@ export const generateYearlyReview = async (userId: string, year: number): Promis
 
     const stats = generateYearlyStats(entries, habits, intentions, habitLogs || []);
 
-    // AI Generation for Themes & Core Memories
-    const model = await getAiClient();
-    const prompt = `
-        Analyze this user's year based on their journal entries and monthly reflections.
-        
-        Entries: ${JSON.stringify(entries.slice(0, 50).map(e => ({ date: e.timestamp, text: e.text, mood: e.primary_sentiment })))}... (truncated)
-        Reflections: ${JSON.stringify(reflections.map(r => ({ month: r.date, summary: r.summary })))}
-
-        1. Identify 3 major themes for the year.
-        2. Select 3 "Core Memories" (significant positive or pivotal moments) from the entries.
-        3. Provide a 1-sentence summary for each month.
-
-        Return JSON:
-        {
-            "themes": [{ "title": "...", "description": "...", "emoji": "..." }],
-            "coreMemories": [ { "date": "...", "reason": "..." } ], 
-            "monthSummaries": [ { "month": "January", "summary": "..." } ]
-        }
-    `;
-
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-
-    // Parse JSON safely
-    let aiData;
+    // AI Generation for Themes & Core Memories using Edge Function
     try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        aiData = jsonMatch ? JSON.parse(jsonMatch[0]) : { themes: [], coreMemories: [], monthSummaries: [] };
-    } catch (e) {
-        console.error("Failed to parse AI yearly review", e);
-        aiData = { themes: [], coreMemories: [], monthSummaries: [] };
+        const entriesSample = entries.slice(0, 30).map(e => ({
+            date: e.timestamp,
+            text: e.text.slice(0, 100),
+            mood: e.primary_sentiment
+        }));
+
+        const reflectionsSample = reflections.map(r => ({
+            month: r.date,
+            summary: r.summary?.slice(0, 100)
+        }));
+
+        const result = await callAIProxy<{ response: string }>('chat', {
+            history: [],
+            userPrompt: `Analyze this user's year (${year}) from their journal. Respond with ONLY JSON.
+
+Entries sample: ${JSON.stringify(entriesSample)}
+Monthly reflections: ${JSON.stringify(reflectionsSample)}
+
+Generate:
+1. themes: 3 major themes with title, description, emoji
+2. coreMemories: 3 significant moments with date and reason
+3. monthSummaries: 1-sentence summary per month
+
+Return JSON: {
+  "themes": [{"title": "...", "description": "...", "emoji": "..."}],
+  "coreMemories": [{"date": "YYYY-MM-DD", "reason": "..."}],
+  "monthSummaries": [{"month": "January", "summary": "..."}]
+}`,
+            systemInstruction: 'You are creating a Spotify Wrapped-style yearly review. Be warm and celebratory. Return only valid JSON.'
+        });
+
+        // Parse JSON from response
+        let aiData = { themes: [], coreMemories: [], monthSummaries: [] };
+        const responseText = result.response || '{}';
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            aiData = JSON.parse(jsonMatch[0]);
+        }
+
+        // Map Core Memories back to full entry objects
+        const coreMemories = (aiData.coreMemories || []).map((cm: any) => {
+            const original = entries.find(e => e.timestamp.startsWith(cm.date));
+            return original || { ...entries[0], text: cm.reason, timestamp: cm.date, title: "Core Memory" };
+        }).filter(Boolean);
+
+        return {
+            year,
+            stats,
+            themes: aiData.themes || [],
+            coreMemories,
+            monthByMonth: aiData.monthSummaries || []
+        };
+    } catch (error) {
+        console.error('Error generating yearly review AI content:', error);
+        // Return stats without AI-generated content
+        return {
+            year,
+            stats,
+            themes: [{ title: "Your Year", description: "A year of growth and reflection", emoji: "🌟" }],
+            coreMemories: entries.slice(0, 3),
+            monthByMonth: []
+        };
     }
-
-    // Map Core Memories back to full entry objects if possible, or create synthetic ones
-    const coreMemories = aiData.coreMemories.map((cm: any) => {
-        const original = entries.find(e => e.timestamp.startsWith(cm.date));
-        return original || { ...entries[0], text: cm.reason, timestamp: cm.date, title: "Core Memory" };
-    }).filter(Boolean);
-
-    return {
-        year,
-        stats,
-        themes: aiData.themes,
-        coreMemories,
-        monthByMonth: aiData.monthSummaries
-    };
 };
