@@ -440,6 +440,7 @@ export async function runFullEvaluation(
     onProgress?: (completed: number, total: number) => void
 ): Promise<EvaluationSummary> {
     const results: EvaluationResult[] = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < TEST_CASES.length; i++) {
         const testCase = TEST_CASES[i];
@@ -447,9 +448,15 @@ export async function runFullEvaluation(
         try {
             const result = await evaluateSingleInsight(testCase, generateInsight);
             results.push(result);
-        } catch (error) {
-            console.error(`Failed to evaluate ${testCase.id}:`, error);
-            // Continue with other tests
+        } catch (error: any) {
+            const errorMsg = `[${testCase.id}] ${error.message || 'Unknown error'}`;
+            console.error('Evaluation error:', errorMsg);
+            errors.push(errorMsg);
+
+            // Stop on first error to help debugging
+            if (results.length === 0) {
+                throw new Error(`First test case failed: ${errorMsg}`);
+            }
         }
 
         if (onProgress) {
@@ -458,6 +465,11 @@ export async function runFullEvaluation(
 
         // Rate limiting: 500ms between calls
         await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Handle empty results
+    if (results.length === 0) {
+        throw new Error(`All ${TEST_CASES.length} test cases failed. Errors: ${errors.join('; ')}`);
     }
 
     // Aggregate results
