@@ -455,7 +455,7 @@ export const useAppLogic = () => {
     const handleDeleteEntry = async (e: Entry) => { setEntries(prev => prev.filter(x => x.id !== e.id)); db.deleteEntry(e.id); };
 
     const handleAcceptSuggestion = async (id: string, s: EntrySuggestion) => {
-        if (s.type === 'habit') await handleAddHabit(s.label, s.data.frequency || 'daily');
+        if (s.type === 'habit') await handleAddHabit(s.label, s.data?.frequency || 'daily');
         if (s.type === 'intention') {
             // Default to "this week" for AI suggestions
             const oneWeekFromNow = new Date();
