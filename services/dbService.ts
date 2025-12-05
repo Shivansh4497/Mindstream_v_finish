@@ -256,7 +256,7 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
     return data || [];
 };
 
-export const addIntention = async (userId: string, text: string, dueDate: Date | null = null, isLifeGoal: boolean = false): Promise<Intention | null> => {
+export const addIntention = async (userId: string, text: string, dueDate: Date | null = null, isLifeGoal: boolean = false, isStarred: boolean = false): Promise<Intention | null> => {
     if (!supabase) return null;
 
     const intentionData = {
@@ -264,6 +264,7 @@ export const addIntention = async (userId: string, text: string, dueDate: Date |
         text,
         due_date: dueDate ? dueDate.toISOString() : null,
         is_life_goal: isLifeGoal,
+        is_starred: isStarred,
         status: 'pending',
         is_recurring: false,
     };
@@ -299,6 +300,21 @@ export const updateIntentionStatus = async (id: string, status: IntentionStatus)
         .single();
     if (error) {
         console.error('Error updating intention status:', error);
+        throw error;
+    }
+    return data;
+};
+
+export const updateIntention = async (id: string, updates: Partial<Intention>): Promise<Intention | null> => {
+    if (!supabase) return null;
+    const { data, error } = await (supabase as any)
+        .from('intentions')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) {
+        console.error('Error updating intention:', error);
         throw error;
     }
     return data;

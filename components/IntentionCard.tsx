@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import type { Intention, IntentionStatus } from '../types';
 import { TrashIcon } from './icons/TrashIcon';
+import { Star } from 'lucide-react';
 import { celebrate, CelebrationType } from '../utils/celebrations';
 import { triggerHaptic } from '../utils/haptics';
 import { formatDueDate } from '../utils/etaCalculator';
@@ -9,9 +10,10 @@ interface IntentionCardProps {
   intention: Intention;
   onToggle: (id: string, currentStatus: IntentionStatus) => void;
   onDelete: (id: string) => void;
+  onStarToggle: (id: string, isStarred: boolean) => void;
 }
 
-export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggle, onDelete }) => {
+export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggle, onDelete, onStarToggle }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleToggle = () => {
@@ -37,7 +39,7 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
   const dueDateText = formatDueDate(dueDate, isLifeGoal);
 
   return (
-    <div ref={cardRef} className="flex items-start bg-dark-surface p-4 rounded-lg mb-3 transition-all duration-300 animate-fade-in-up hover:bg-white/5">
+    <div ref={cardRef} className={`flex items-start bg-dark-surface p-4 rounded-lg mb-3 transition-all duration-300 animate-fade-in-up hover:bg-white/5 ${intention.is_starred ? 'ring-1 ring-amber-400/30 bg-amber-400/5' : ''}`}>
       <input
         type="checkbox"
         checked={intention.status === 'completed'}
@@ -52,6 +54,16 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
           {dueDateText}
         </span>
       </div>
+
+      {/* Star Button */}
+      <button
+        onClick={() => onStarToggle(intention.id, intention.is_starred || false)}
+        className={`p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0 mr-1 ${intention.is_starred ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
+        aria-label="Toggle star"
+      >
+        <Star className={`w-5 h-5 ${intention.is_starred ? 'fill-amber-400' : ''}`} />
+      </button>
+
       <button
         onClick={() => onDelete(intention.id)}
         className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"

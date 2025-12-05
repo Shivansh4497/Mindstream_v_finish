@@ -74,6 +74,7 @@ export interface Intention {
   timeframe?: IntentionTimeframe; //  Deprecated, use due_date instead
   due_date?: string | null; // NEW: ISO timestamp for deadline
   is_life_goal?: boolean; // NEW: True for ongoing life goals
+  is_starred?: boolean; // NEW: High priority toggle
   is_recurring: boolean;
   tags?: string[];
   target_date?: string | null;

@@ -388,6 +388,20 @@ export const useAppLogic = () => {
         setIntentions(prev => prev.map(i => i.id === id ? { ...i, status: ns as any } : i));
         db.updateIntentionStatus(id, ns as any);
     };
+
+    const handleToggleStar = async (id: string, isStarred: boolean) => {
+        const newStarredState = !isStarred;
+        setIntentions(prev => prev.map(i => i.id === id ? { ...i, is_starred: newStarredState } : i));
+        try {
+            await db.updateIntention(id, { is_starred: newStarredState });
+        } catch (error) {
+            console.error("Failed to toggle star:", error);
+            // Revert on error
+            setIntentions(prev => prev.map(i => i.id === id ? { ...i, is_starred: isStarred } : i));
+            showToast("Failed to update priority.");
+        }
+    };
+
     const handleDeleteIntention = async (id: string) => { setIntentions(prev => prev.filter(i => i.id !== id)); db.deleteIntention(id); };
     const handleDeleteHabit = async (id: string) => { setHabits(prev => prev.filter(h => h.id !== id)); db.deleteHabit(id); };
     const handleEditEntry = async (e: Entry, t: string) => {
@@ -433,6 +447,6 @@ export const useAppLogic = () => {
 
     return {
         state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore },
-        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections }
+        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections }
     };
 };

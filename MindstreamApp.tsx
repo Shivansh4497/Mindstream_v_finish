@@ -163,6 +163,7 @@ export const MindstreamApp: React.FC = () => {
                                 onToggleIntention={actions.handleToggleIntention}
                                 onDeleteIntention={actions.handleDeleteIntention}
                                 onAddIntention={actions.handleAddIntention}
+                                onStarToggleIntention={actions.handleToggleStar}
                             />
                         </motion.div>
                     )}

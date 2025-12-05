@@ -9,6 +9,7 @@ interface IntentionsViewProps {
     intentions: Intention[];
     onToggle: (id: string, currentStatus: Intention['status']) => void;
     onDelete: (id: string) => void;
+    onStarToggle: (id: string, isStarred: boolean) => void;
 }
 
 const urgencyCategoryOrder: UrgencyCategory[] = ['overdue', 'today', 'this_week', 'this_month', 'later', 'life'];
@@ -16,9 +17,11 @@ const urgencyCategoryOrder: UrgencyCategory[] = ['overdue', 'today', 'this_week'
 export const IntentionsView: React.FC<IntentionsViewProps> = ({
     intentions,
     onToggle,
-    onDelete
+    onDelete,
+    onStarToggle
 }) => {
     const [showCompleted, setShowCompleted] = useState(false);
+    const [isOverdueCollapsed, setIsOverdueCollapsed] = useState(true); // Default to collapsed
 
     const { pendingByCategory, allCompleted } = useMemo(() => {
         const pendingGroups: Record<UrgencyCategory, Intention[]> = {
@@ -42,17 +45,25 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
             }
         });
 
-        // Sort pending by due date within each category
+        // Sort pending by Starred -> Due Date -> Created At
         Object.keys(pendingGroups).forEach(key => {
             const category = key as UrgencyCategory;
             pendingGroups[category].sort((a, b) => {
-                // 1. Primary: Due Date (Ascending)
-                if (!a.due_date) return 1;
-                if (!b.due_date) return -1;
-                const timeDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-                if (timeDiff !== 0) return timeDiff;
+                // 1. Starred First
+                if (a.is_starred && !b.is_starred) return -1;
+                if (!a.is_starred && b.is_starred) return 1;
 
-                // 2. Secondary: Created At (Descending - Newest First)
+                // 2. Due Date (Ascending)
+                if (a.due_date && b.due_date) {
+                    const timeDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+                    if (timeDiff !== 0) return timeDiff;
+                } else if (a.due_date && !b.due_date) {
+                    return 1; // No due date goes to bottom
+                } else if (!a.due_date && b.due_date) {
+                    return -1;
+                }
+
+                // 3. Created At (Descending - Newest First)
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
         });
@@ -96,6 +107,40 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
                     const pendingList = pendingByCategory[category];
                     if (pendingList.length === 0) return null;
 
+                    // Special handling for Overdue section
+                    if (category === 'overdue') {
+                        return (
+                            <div key={category} className="mb-6">
+                                <button
+                                    onClick={() => setIsOverdueCollapsed(!isOverdueCollapsed)}
+                                    className="w-full flex items-center justify-between p-3 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ChevronDown className={`w-5 h-5 text-red-400 transition-transform ${isOverdueCollapsed ? '-rotate-90' : ''}`} />
+                                        <h2 className="text-lg font-bold font-display text-red-400">Overdue</h2>
+                                    </div>
+                                    <span className="text-sm font-bold text-red-300 bg-red-500/20 px-2 py-0.5 rounded-full">
+                                        {pendingList.length} items
+                                    </span>
+                                </button>
+
+                                {!isOverdueCollapsed && (
+                                    <div className="mt-3 pl-2 border-l-2 border-red-500/10 ml-4 animate-fade-in-down">
+                                        {pendingList.map(intention => (
+                                            <IntentionCard
+                                                key={intention.id}
+                                                intention={intention}
+                                                onToggle={onToggle}
+                                                onDelete={onDelete}
+                                                onStarToggle={onStarToggle}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
                     return (
                         <div key={category} className="mb-8">
                             <div className="flex items-center justify-between mb-4">
@@ -113,6 +158,7 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
                                     intention={intention}
                                     onToggle={onToggle}
                                     onDelete={onDelete}
+                                    onStarToggle={onStarToggle}
                                 />
                             ))}
                         </div>
