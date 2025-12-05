@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 5.0  
-**Last Updated:** November 30, 2025  
+**Version:** 6.0  
+**Last Updated:** December 6, 2025  
 **Status:** Production (Live on Vercel)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash  
@@ -15,13 +15,15 @@
 3. [Core Value Proposition](#3-core-value-proposition)
 4. [Product Architecture: The 6 Pillars](#4-product-architecture-the-6-pillars)
 5. [User Flows](#5-user-flows)
-6. [Technical Architecture](#6-technical-architecture)
-7. [Database Schema](#7-database-schema)
-8. [AI System](#8-ai-system)
-9. [Design System & UI/UX](#9-design-system--uiux)
-10. [Security & Privacy](#10-security--privacy)
-11. [Deployment & DevOps](#11-deployment--devops)
-12. [Future Roadmap](#12-future-roadmap)
+6. [Progressive Disclosure System](#6-progressive-disclosure-system) ← **NEW v6.0**
+7. [Analytics & Measurement](#7-analytics--measurement) ← **NEW v6.0**
+8. [Technical Architecture](#8-technical-architecture)
+9. [Database Schema](#9-database-schema)
+10. [AI System](#10-ai-system)
+11. [Design System & UI/UX](#11-design-system--uiux)
+12. [Security & Privacy](#12-security--privacy)
+13. [Deployment & DevOps](#13-deployment--devops)
+14. [Future Roadmap](#14-future-roadmap)
 
 ---
 
@@ -433,7 +435,203 @@ SYSTEM • 2 day streak
 
 ---
 
-## 6. Technical Architecture
+### 5.4 Dual Onboarding System (NEW v6.0)
+
+**Goal:** Accommodate different user preferences for getting started.
+
+**The Landing Screen:**
+```
+┌─────────────────────────────────────┐
+│          Welcome to Mindstream       │
+│    Your AI companion for clarity     │
+│                                      │
+│  ┌─────────────┐  ┌─────────────┐   │
+│  │ Quick Start │  │Guided Setup │   │
+│  │  Just write │  │  5-step     │   │
+│  └─────────────┘  └─────────────┘   │
+└─────────────────────────────────────┘
+```
+
+#### Path A: Quick Start (Fast Users)
+1. User taps "Quick Start"
+2. Lands directly in Stream view (empty state with prompts)
+3. Writes first entry
+4. **Insight Modal appears** (NEW!) with:
+   - AI-generated insight from their entry
+   - Follow-up question
+   - Suggested habit
+   - Suggested intention
+5. User chooses action: Track Habit | Set Goal | Explore in Chat | Skip
+6. Action is pre-filled based on AI suggestions
+
+#### Path B: Guided Setup (Guided Users)
+1. User taps "Guided Setup"
+2. Goes through 5-step onboarding wizard:
+   - Privacy acknowledgment
+   - Emotion selection
+   - Life area selection
+   - Trigger identification
+   - Elaboration + AI personality selection
+3. Receives AI insight and suggestions
+4. Option to "Unpack in Chat"
+
+**User Story:**
+> *As a new user who doesn't like long tutorials, I can tap "Quick Start" to immediately begin journaling, and receive personalized insights after my first entry.*
+
+---
+
+### 5.5 Post-Entry Insight Modal (NEW v6.0)
+
+**Purpose:** Delight Quick Start users with instant AI value after their first entry.
+
+**Trigger Conditions:**
+- User is Quick Start (not guided onboarding)
+- First real entry just saved
+- Entry has 10+ characters
+
+**Modal Contents:**
+```
+┌─────────────────────────────────────┐
+│  ✨ Here's what I noticed...        │
+│                                      │
+│  "[AI insight based on entry]"      │
+│                                      │
+│  💭 Question:                       │
+│  "[Follow-up reflection question]"  │
+│                                      │
+│  ┌─────────────────────────────────┐│
+│  │ 📈 Track Habit: "Meditation"   ││
+│  │ 🎯 Set Goal: "Practice calm"   ││
+│  │ 💬 Explore in Chat              ││
+│  │ ✕ Skip for now                  ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘
+```
+
+**Action Behaviors:**
+| Action | Behavior |
+|--------|----------|
+| Track Habit | Navigate to Focus > Habits, add suggested habit |
+| Set Goal | Navigate to Focus > Goals, add suggested intention |
+| Explore in Chat | Open Chat, seed with entry context + follow-up question |
+| Skip | Dismiss modal, continue journaling |
+
+---
+
+## 6. Progressive Disclosure System (NEW v6.0)
+
+**Philosophy:** Show features only when they become meaningful.
+
+### 6.1 The Rule
+```
+entries.length < 5  →  Hide Insights tab
+entries.length >= 5 →  Show Insights tab + unlock notification
+```
+
+### 6.2 Tab Visibility by Entry Count
+
+| Entries | Visible Tabs |
+|---------|--------------|
+| 0-4 | Stream, Focus, Chat |
+| 5+ | Stream, Focus, **Insights**, Chat |
+
+### 6.3 Why Hide Insights?
+
+- **Empty State Problem:** Reflections with no data are meaningless
+- **Cognitive Load:** New users need to focus on writing, not exploring
+- **Deferred Gratification:** Reward consistent journaling with new features
+
+### 6.4 Unlock Experience
+
+**When user reaches 5 entries:**
+1. Toast appears: "🎉 Insights unlocked!"
+2. Red pulsing badge appears on Insights tab
+3. Badge persists until user visits Insights
+4. First visit clears the badge
+
+**Implementation:**
+```typescript
+// NavBar.tsx
+const visibleItems = navItems.filter(item => 
+    item.id !== 'insights' || entryCount >= 5
+);
+
+// MindstreamApp.tsx
+useEffect(() => {
+    if (realEntryCount >= 5 && !hasVisitedInsights) {
+        actions.setToast({ message: '🎉 Insights tab unlocked!', id: Date.now() });
+    }
+}, [realEntryCount]);
+```
+
+### 6.5 Future Progressive Disclosure (Deferred)
+
+| Feature | Unlock Condition | Status |
+|---------|------------------|--------|
+| Insights tab | 5 entries | ✅ Implemented |
+| Yearly Review | 90 days or 50 entries | 🔮 Future |
+| Pattern Detection | 10+ entries | 🔮 Future |
+| Behavior-based unlocks | Engagement metrics | 🔮 Future |
+
+---
+
+## 7. Analytics & Measurement (NEW v6.0)
+
+**Purpose:** Track user behavior for retention analysis and product iteration.
+
+### 7.1 Analytics Events
+
+| Event | When | Properties |
+|-------|------|------------|
+| `onboarding_completed` | Landing screen choice | `{ path: 'quick_start' \| 'guided' }` |
+| `entry_created` | Entry saved | `{ word_count, sentiment }` |
+| `insight_modal_action` | Modal button clicked | `{ action: 'habit' \| 'goal' \| 'chat' \| 'dismiss' }` |
+| `habit_completed` | Habit toggled on | `{ habit_name }` |
+| `insights_unlocked` | 5th entry saved | `{}` |
+| `chat_message_sent` | Chat message sent | `{ word_count }` |
+
+### 7.2 Database Table
+
+```sql
+CREATE TABLE analytics_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    event_name TEXT NOT NULL,
+    properties JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 7.3 Query Examples
+
+```sql
+-- Daily active users
+SELECT DATE(created_at), COUNT(DISTINCT user_id) 
+FROM analytics_events GROUP BY DATE(created_at);
+
+-- Onboarding funnel
+SELECT properties->>'path' as path, COUNT(*) 
+FROM analytics_events WHERE event_name = 'onboarding_completed'
+GROUP BY properties->>'path';
+
+-- Insight modal conversion
+SELECT properties->>'action' as action, COUNT(*) 
+FROM analytics_events WHERE event_name = 'insight_modal_action'
+GROUP BY properties->>'action';
+```
+
+### 7.4 Key Metrics to Track
+
+| Metric | Formula | Target |
+|--------|---------|--------|
+| **D1 Retention** | Users who journal on Day 2 | > 30% |
+| **Onboarding Completion** | Users who write first entry | > 70% |
+| **Insight Modal Engagement** | Non-dismiss actions | > 50% |
+| **5-Entry Milestone** | Users reaching Insights unlock | > 40% |
+
+---
+
+## 8. Technical Architecture
 
 ### 6.1 Frontend Stack
 
@@ -1565,6 +1763,16 @@ All icons in `/components/icons/` using Lucide React standard:
 ---
 
 **Document Change Log:**
+- **v6.0 (Dec 6, 2025):** Dual Onboarding, Progressive Disclosure & Analytics
+  - **NEW:** Landing Screen with Quick Start / Guided Setup paths
+  - **NEW:** Post-Entry Insight Modal for Quick Start users
+  - **NEW:** Progressive Disclosure - hide Insights tab until 5 entries
+  - **NEW:** Badge + Toast unlock notification system
+  - **NEW:** Analytics events system (7 core events in Supabase)
+  - **NEW:** Sections 6 (Progressive Disclosure) and 7 (Analytics)
+  - **UPDATED:** User Flows with dual onboarding paths
+  - **UPDATED:** Technical architecture with new components
+
 - **v5.0 (Nov 30, 2025):** Professional Design System & Universal Voice Input
   - **NEW:** Added universal voice input to Chat tab (matching Stream)
   - **NEW:** Professional color system v2.0 (fixed invalid brand-teal, semantic tokens)
@@ -1601,4 +1809,5 @@ All icons in `/components/icons/` using Lucide React standard:
 
 ---
 
-*End of PRD v5.0*
+*End of PRD v6.0*
+
