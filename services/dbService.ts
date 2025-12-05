@@ -219,12 +219,16 @@ export const addReflection = async (userId: string, reflectionData: Omit<Reflect
         dateForDb = `${reflectionData.date}-01`;
     }
 
+    // Only include columns that exist in the database schema
+    // This prevents errors from extra fields returned by AI
     const dbPayload = {
-        ...reflectionData,
-        date: dateForDb,
         user_id: userId,
-        timestamp: new Date().toISOString(),
+        type: reflectionData.type,
+        date: dateForDb,
+        summary: reflectionData.summary,
         suggestions: reflectionData.suggestions || null,
+        timestamp: new Date().toISOString(),
+        auto_generated: reflectionData.auto_generated || false,
     };
 
     const { data, error } = await (supabase as any)
