@@ -6,26 +6,53 @@ import {
     runFullEvaluation,
     EvaluationResult,
     EvaluationSummary,
-    setOpenAIKey,
-    getOpenAIKey
+    setJudgeConfig,
+    JudgeModel
 } from '../../services/insightEvaluator';
 
+const MODEL_OPTIONS: { value: JudgeModel; label: string; placeholder: string; description: string }[] = [
+    {
+        value: 'gpt-4',
+        label: 'GPT-4 (OpenAI)',
+        placeholder: 'sk-...',
+        description: 'Most objective evaluation. Requires OpenAI API credits.'
+    },
+    {
+        value: 'claude',
+        label: 'Claude (Anthropic)',
+        placeholder: 'sk-ant-...',
+        description: 'Strong alternative. Requires Anthropic API credits.'
+    },
+    {
+        value: 'gemini',
+        label: 'Gemini (Google)',
+        placeholder: 'AIza...',
+        description: 'Free option. Uses your existing Gemini key (less objective since same model).'
+    },
+];
+
 export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [apiKey, setApiKey] = useState<string>(getOpenAIKey() || '');
+    const [selectedModel, setSelectedModel] = useState<JudgeModel>('gemini');
+    const [apiKey, setApiKey] = useState<string>('');
     const [results, setResults] = useState<EvaluationResult[]>([]);
     const [summary, setSummary] = useState<EvaluationSummary | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [progress, setProgress] = useState({ completed: 0, total: TEST_CASES.length });
     const [error, setError] = useState<string | null>(null);
 
+    const currentModelOption = MODEL_OPTIONS.find(m => m.value === selectedModel)!;
+
     const runValidation = async () => {
         if (!apiKey.trim()) {
-            setError('Please enter your OpenAI API key');
+            setError('Please enter your API key');
             return;
         }
 
-        // Set the API key for the evaluator
-        setOpenAIKey(apiKey.trim());
+        // Set the judge configuration
+        setJudgeConfig({
+            model: selectedModel,
+            apiKey: apiKey.trim()
+        });
 
         setIsRunning(true);
         setResults([]);
@@ -70,19 +97,41 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-2xl font-bold text-white">Insight Quality Evaluator</h1>
-                        <p className="text-gray-400 text-sm">GPT-4 as independent judge for Gemini insights</p>
+                        <p className="text-gray-400 text-sm">AI-powered evaluation of Gemini insights</p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white text-lg">✕</button>
                 </div>
 
+                {/* Model Selector */}
+                <div className="bg-mindstream-bg-surface rounded-xl p-4 mb-4 border border-gray-800">
+                    <label className="block text-gray-400 text-sm mb-2">Select Judge Model</label>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                        {MODEL_OPTIONS.map(option => (
+                            <button
+                                key={option.value}
+                                onClick={() => setSelectedModel(option.value)}
+                                className={`p-3 rounded-lg border transition-all text-left ${selectedModel === option.value
+                                        ? 'border-brand-teal bg-brand-teal/10 text-white'
+                                        : 'border-gray-700 bg-mindstream-bg-elevated text-gray-400 hover:border-gray-500'
+                                    }`}
+                            >
+                                <div className="font-medium text-sm">{option.label}</div>
+                                <div className="text-xs text-gray-500 mt-1">{option.description}</div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {/* API Key Input */}
                 <div className="bg-mindstream-bg-surface rounded-xl p-4 mb-6 border border-gray-800">
-                    <label className="block text-gray-400 text-sm mb-2">OpenAI API Key (for GPT-4 Judge)</label>
+                    <label className="block text-gray-400 text-sm mb-2">
+                        {currentModelOption.label} API Key
+                    </label>
                     <input
                         type="password"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="sk-..."
+                        placeholder={currentModelOption.placeholder}
                         className="w-full bg-mindstream-bg-elevated border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-teal"
                     />
                     <p className="text-gray-500 text-xs mt-2">Your key is only stored in memory and never sent to our servers.</p>
@@ -112,7 +161,12 @@ export const InsightValidator: React.FC<{ onClose: () => void }> = ({ onClose })
                 {/* Summary Dashboard */}
                 {summary && (
                     <div className="bg-mindstream-bg-surface rounded-xl p-6 mb-8 border border-gray-800">
-                        <h2 className="text-xl font-bold text-white mb-4">📊 Evaluation Summary</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-white">📊 Evaluation Summary</h2>
+                            <span className="text-sm text-gray-400 bg-mindstream-bg-elevated px-3 py-1 rounded-full">
+                                Judge: {summary.judgeModel.toUpperCase()}
+                            </span>
+                        </div>
 
                         {/* Overall Status */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

@@ -1,28 +1,33 @@
 /**
  * Insight Evaluator Service
  * 
- * Uses GPT-4 as an independent judge to evaluate the quality of
- * Gemini-generated insights. This creates a robust, automated
- * feedback loop for prompt improvement.
+ * Uses an AI model as an independent judge to evaluate the quality of
+ * Gemini-generated insights. Supports GPT-4, Claude, and Gemini as judges.
  * 
  * @module services/insightEvaluator
  */
 
 import type { InstantInsight } from '../types';
 
-// OpenAI API Key - will be set at runtime via setOpenAIKey()
-let OPENAI_API_KEY: string | null = null;
+// ============================================
+// CONFIGURATION
+// ============================================
 
-/**
- * Set the OpenAI API key at runtime
- * This avoids hardcoding the key in the source code
- */
-export function setOpenAIKey(key: string) {
-    OPENAI_API_KEY = key;
+export type JudgeModel = 'gpt-4' | 'claude' | 'gemini';
+
+interface JudgeConfig {
+    model: JudgeModel;
+    apiKey: string;
 }
 
-export function getOpenAIKey(): string | null {
-    return OPENAI_API_KEY;
+let currentJudgeConfig: JudgeConfig | null = null;
+
+export function setJudgeConfig(config: JudgeConfig) {
+    currentJudgeConfig = config;
+}
+
+export function getJudgeConfig(): JudgeConfig | null {
+    return currentJudgeConfig;
 }
 
 // ============================================
@@ -227,7 +232,7 @@ export const TEST_CASES: TestCase[] = [
 ];
 
 // ============================================
-// EVALUATION RUBRIC (GPT-4 as Judge)
+// EVALUATION RUBRIC
 // ============================================
 
 const EVALUATION_RUBRIC = `
@@ -314,23 +319,21 @@ export interface EvaluationSummary {
     failureModes: Record<string, number>;
     worstCases: EvaluationResult[];
     bestCases: EvaluationResult[];
+    judgeModel: JudgeModel;
 }
 
 // ============================================
-// CORE EVALUATION LOGIC
+// JUDGE API IMPLEMENTATIONS
 // ============================================
 
-/**
- * Call GPT-4 to evaluate a generated insight
- */
-async function callGPT4Judge(
+function buildEvaluationPrompt(
     entry: string,
     sentiment: string,
     lifeArea: string,
     trigger: string,
     insight: InstantInsight
-): Promise<EvaluationScores> {
-    const prompt = `
+): string {
+    return `
 ${EVALUATION_RUBRIC}
 
 ---
@@ -353,12 +356,17 @@ AI-GENERATED FOLLOW-UP QUESTION:
 
 Evaluate this insight based on the rubric above. Return JSON only.
 `;
+}
 
+/**
+ * Call GPT-4 as judge
+ */
+async function callOpenAIJudge(prompt: string, apiKey: string): Promise<EvaluationScores> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+            'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
             model: 'gpt-4o',
@@ -373,13 +381,110 @@ Evaluate this insight based on the rubric above. Return JSON only.
 
     if (!response.ok) {
         const error = await response.text();
-        throw new Error(`GPT-4 API Error: ${error}`);
+        throw new Error(`OpenAI API Error: ${error}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
     return JSON.parse(content);
 }
+
+/**
+ * Call Claude as judge
+ */
+async function callClaudeJudge(prompt: string, apiKey: string): Promise<EvaluationScores> {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1024,
+            messages: [
+                { role: 'user', content: prompt + '\n\nRespond with ONLY valid JSON, no markdown.' }
+            ]
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Claude API Error: ${error}`);
+    }
+
+    const data = await response.json();
+    const content = data.content[0].text;
+
+    // Claude might wrap JSON in markdown, extract it
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        throw new Error('Claude did not return valid JSON');
+    }
+
+    return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * Call Gemini as judge (using the existing client)
+ */
+async function callGeminiJudge(prompt: string, apiKey: string): Promise<EvaluationScores> {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt + '\n\nRespond with ONLY valid JSON.' }] }],
+            generationConfig: {
+                responseMimeType: 'application/json'
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Gemini API Error: ${error}`);
+    }
+
+    const data = await response.json();
+    const content = data.candidates[0].content.parts[0].text;
+    return JSON.parse(content);
+}
+
+/**
+ * Call the configured judge model
+ */
+async function callJudge(
+    entry: string,
+    sentiment: string,
+    lifeArea: string,
+    trigger: string,
+    insight: InstantInsight
+): Promise<EvaluationScores> {
+    if (!currentJudgeConfig) {
+        throw new Error('No judge model configured. Call setJudgeConfig first.');
+    }
+
+    const prompt = buildEvaluationPrompt(entry, sentiment, lifeArea, trigger, insight);
+
+    switch (currentJudgeConfig.model) {
+        case 'gpt-4':
+            return callOpenAIJudge(prompt, currentJudgeConfig.apiKey);
+        case 'claude':
+            return callClaudeJudge(prompt, currentJudgeConfig.apiKey);
+        case 'gemini':
+            return callGeminiJudge(prompt, currentJudgeConfig.apiKey);
+        default:
+            throw new Error(`Unknown judge model: ${currentJudgeConfig.model}`);
+    }
+}
+
+// ============================================
+// CORE EVALUATION LOGIC
+// ============================================
 
 /**
  * Run a single evaluation
@@ -400,8 +505,8 @@ export async function evaluateSingleInsight(
 
     const latencyMs = Date.now() - startTime;
 
-    // Evaluate using GPT-4
-    const scores = await callGPT4Judge(
+    // Evaluate using configured judge
+    const scores = await callJudge(
         testCase.entry,
         testCase.sentiment,
         testCase.lifeArea,
@@ -439,6 +544,10 @@ export async function runFullEvaluation(
     generateInsight: (text: string, sentiment: string, lifeArea: string, trigger: string) => Promise<InstantInsight>,
     onProgress?: (completed: number, total: number) => void
 ): Promise<EvaluationSummary> {
+    if (!currentJudgeConfig) {
+        throw new Error('No judge model configured. Call setJudgeConfig first.');
+    }
+
     const results: EvaluationResult[] = [];
     const errors: string[] = [];
 
@@ -520,6 +629,7 @@ export async function runFullEvaluation(
         scoresByCriterion,
         failureModes,
         worstCases,
-        bestCases
+        bestCases,
+        judgeModel: currentJudgeConfig.model
     };
 }
