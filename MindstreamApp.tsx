@@ -257,7 +257,7 @@ export const MindstreamApp: React.FC = () => {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="absolute inset-0 flex flex-col z-30 bg-brand-indigo"
+                            className="absolute inset-0 overflow-y-auto z-30 bg-brand-indigo"
                         >
                             <SettingsView onBack={() => setView('stream')} />
                         </motion.div>
