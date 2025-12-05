@@ -85,10 +85,10 @@ export const HabitCard: React.FC<HabitCardProps> = ({ habit, logs, onToggle, onE
         <div className="bg-dark-surface rounded-lg mb-3 shadow-lg transition-all duration-300 animate-fade-in-up overflow-hidden">
 
             {/* MAIN ROW */}
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setIsExpanded(!isExpanded)}>
+            <div className="p-4 flex flex-wrap items-center justify-between gap-y-4 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setIsExpanded(!isExpanded)}>
 
                 {/* LEFT: Info */}
-                <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1 mr-4">
+                <div className="flex items-center gap-3 overflow-hidden flex-grow min-w-[200px] mr-4">
                     <span className="text-2xl flex-shrink-0">{habit.emoji}</span>
                     <div className="min-w-0">
                         <h3 className="text-lg font-medium text-white truncate">{habit.name}</h3>
@@ -109,23 +109,18 @@ export const HabitCard: React.FC<HabitCardProps> = ({ habit, logs, onToggle, onE
                 </div>
 
                 {/* RIGHT: Visual History */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-auto">
                     <div className="flex gap-1.5 items-center">
-                        {historyDates.map((date, i) => {
-                            // Responsive: Hide oldest 4 days on mobile for daily habits to save space
-                            const isHiddenOnMobile = habit.frequency === 'daily' && i < 4;
-                            return (
-                                <div key={i} className={isHiddenOnMobile ? 'hidden sm:block' : ''}>
-                                    <HabitLogButton
-                                        date={date}
-                                        isLogged={isLogged(date)}
-                                        isToday={isSameDay(date, new Date())}
-                                        frequency={habit.frequency}
-                                        onToggle={() => onToggle(date.toISOString())}
-                                    />
-                                </div>
-                            );
-                        })}
+                        {historyDates.map((date, i) => (
+                            <HabitLogButton
+                                key={i}
+                                date={date}
+                                isLogged={isLogged(date)}
+                                isToday={isSameDay(date, new Date())}
+                                frequency={habit.frequency}
+                                onToggle={() => onToggle(date.toISOString())}
+                            />
+                        ))}
                     </div>
                     {/* Mobile Chevron */}
                     <div className="ml-2 pl-2 border-l border-white/10">
