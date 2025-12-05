@@ -111,16 +111,21 @@ export const HabitCard: React.FC<HabitCardProps> = ({ habit, logs, onToggle, onE
                 {/* RIGHT: Visual History */}
                 <div className="flex items-center gap-2">
                     <div className="flex gap-1.5 items-center">
-                        {historyDates.map((date, i) => (
-                            <HabitLogButton
-                                key={i}
-                                date={date}
-                                isLogged={isLogged(date)}
-                                isToday={isSameDay(date, new Date())}
-                                frequency={habit.frequency}
-                                onToggle={() => onToggle(date.toISOString())}
-                            />
-                        ))}
+                        {historyDates.map((date, i) => {
+                            // Responsive: Hide oldest 4 days on mobile for daily habits to save space
+                            const isHiddenOnMobile = habit.frequency === 'daily' && i < 4;
+                            return (
+                                <div key={i} className={isHiddenOnMobile ? 'hidden sm:block' : ''}>
+                                    <HabitLogButton
+                                        date={date}
+                                        isLogged={isLogged(date)}
+                                        isToday={isSameDay(date, new Date())}
+                                        frequency={habit.frequency}
+                                        onToggle={() => onToggle(date.toISOString())}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                     {/* Mobile Chevron */}
                     <div className="ml-2 pl-2 border-l border-white/10">

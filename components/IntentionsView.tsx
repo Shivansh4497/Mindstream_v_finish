@@ -46,9 +46,14 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
         Object.keys(pendingGroups).forEach(key => {
             const category = key as UrgencyCategory;
             pendingGroups[category].sort((a, b) => {
+                // 1. Primary: Due Date (Ascending)
                 if (!a.due_date) return 1;
                 if (!b.due_date) return -1;
-                return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+                const timeDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+                if (timeDiff !== 0) return timeDiff;
+
+                // 2. Secondary: Created At (Descending - Newest First)
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
         });
 
