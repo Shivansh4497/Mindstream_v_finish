@@ -6,7 +6,6 @@ import { MonthlyReflections } from './MonthlyReflections';
 import { SentimentTimeline } from './SentimentTimeline';
 import { AIStatus } from '../MindstreamApp';
 import { supabase } from '../services/supabaseClient';
-import { InsightCard } from './InsightCard';
 import { DailyPulse } from './DailyPulse';
 import { generateChartInsights } from '../services/chartInsightsService';
 import { subDays } from 'date-fns';
@@ -54,7 +53,6 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
   debugOutput
 }) => {
   const [activeTimeframe, setActiveTimeframe] = useState<ReflectionTimeframe>('daily');
-  const [showCharts, setShowCharts] = useState(false);
   const [isGeneratingPulse, setIsGeneratingPulse] = useState(false);
   const [lastGeneratedDate, setLastGeneratedDate] = useState<string | null>(null);
   const [insights, setInsights] = useState<{
@@ -220,7 +218,8 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
         return <MonthlyReflections entries={entries} monthlyReflections={monthly} onGenerate={onGenerateMonthly} onExplore={onExploreInChat} isGenerating={isGenerating} onAddSuggestion={onAddSuggestion} />;
       case 'insights':
         return (
-          <div className="p-4">
+          <div className="p-4 space-y-6">
+            {/* Daily Pulse Summary */}
             <DailyPulse
               summary={insights.dailyPulse || "Keep tracking your habits and mood to unlock personalized insights."}
               lastGeneratedDate={lastGeneratedDate}
@@ -228,33 +227,24 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
               onGenerate={handleGeneratePulse}
             />
 
-            {/* View Details Toggle */}
-            {insights.dailyPulse && (
-              <button
-                onClick={() => setShowCharts(!showCharts)}
-                className="w-full text-center py-3 text-sm text-brand-teal hover:text-brand-teal/80 transition-colors font-medium"
-              >
-                {showCharts ? '↑ Hide Details' : '↓ View Details'}
-              </button>
-            )}
-
-            {showCharts && (
-              <div className="py-4">
-                {/* Simplified: Only Mood Flow card - provides clear, actionable value */}
-                <InsightCard
-                  title="Mood Flow"
-                  insight={insights.sentiment || "Tracking your emotional trends..."}
-                  color="bg-indigo-500"
-                >
-                  <div className="h-[200px] w-full">
-                    <SentimentTimeline
-                      entries={entries}
-                      days={14}
-                    />
-                  </div>
-                </InsightCard>
+            {/* Mood Flow - Always visible, no clicks needed */}
+            <div className="bg-gray-800/50 rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                  Mood Flow
+                </span>
+                <span className="text-xs text-gray-500">Last 14 Days</span>
               </div>
-            )}
+              <p className="text-lg text-white mb-4">
+                {insights.sentiment || "Tracking your emotional trends..."}
+              </p>
+              <div className="h-[200px] w-full">
+                <SentimentTimeline
+                  entries={entries}
+                  days={14}
+                />
+              </div>
+            </div>
           </div>
         );
       default:
