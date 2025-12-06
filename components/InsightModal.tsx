@@ -56,8 +56,14 @@ export const InsightModal: React.FC<InsightModalProps> = ({
                         </div>
 
                         {/* Insight */}
-                        <p className="text-gray-200 text-lg leading-relaxed mb-4">
+                        <p className="text-gray-200 text-lg leading-relaxed mb-3">
                             "{insight}"
+                        </p>
+
+                        {/* Why This Insight - Evidence for trust */}
+                        <p className="text-xs text-gray-500 italic mb-4 flex items-center gap-1">
+                            <span>💡</span>
+                            <span>Based on what you just shared</span>
                         </p>
 
                         {/* Follow-up Question */}

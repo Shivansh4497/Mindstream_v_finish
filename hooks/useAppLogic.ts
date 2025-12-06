@@ -187,6 +187,8 @@ export const useAppLogic = () => {
                 try { processedData = await gemini.processEntry(text); }
                 catch (error) {
                     console.warn("AI processing failed");
+                    // Show user-friendly fallback message
+                    showToast("✨ Entry saved! AI enrichment will retry later.");
                     // Log AI error event
                     db.logEvent(user.id, 'error_event', {
                         source: 'ai_process_entry',
