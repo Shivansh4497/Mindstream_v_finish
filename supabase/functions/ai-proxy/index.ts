@@ -245,12 +245,12 @@ Respond with ONLY JSON: {"keywords": ["term1", "term2"]}`;
 
             case 'daily-reflection': {
                 const { entries, intentions, habits } = payload;
-                const prompt = `You are the user's thoughtful life coach. Generate a Daily Reflection. Respond with ONLY JSON.
+                const prompt = `You are the user's thoughtful life coach. Generate a Daily Reflection. Respond with ONLY valid JSON.
 
 TODAY'S DATA:
 Entries: ${entries || 'No entries today'}
 Pending Goals: ${intentions || 'No active goals'}
-Habits Tracked: ${habits || 'No habits'}
+Habits Already Tracked: ${habits || 'No habits'}
 
 YOUR TASK - SUMMARY (3-5 sentences):
 - Paint a picture of their day. What was the emotional arc?
@@ -258,14 +258,17 @@ YOUR TASK - SUMMARY (3-5 sentences):
 - Celebrate ONE specific win - be precise, name the actual thing they did
 - Offer ONE gentle observation about what could improve - be kind, not preachy
 
-YOUR TASK - SUGGESTIONS (max 1-2):
-- MUST reference SPECIFIC items from their data above
+YOUR TASK - SUGGESTIONS (max 1, can be empty):
+CRITICAL: Do NOT suggest something they already track as a habit! Check "Habits Already Tracked" above.
+- Only suggest a NEW intention/goal, never an existing habit
+- MUST reference SPECIFIC items from their entries or pending goals
+- Format: 5-12 words max, actionable
 - BAD: "Prioritize your goals" (generic)
-- GOOD: "Complete the 'Finish migration' goal tomorrow" (references their actual goal)
-- Format: 5-12 words, actionable, uses their actual entry/goal/habit text
-- If data is too sparse or day was balanced, return empty array
+- BAD: "Exercise daily" (if they already have an exercise habit)
+- GOOD: "Tomorrow: finish the migration task" (specific goal from their data)
+- If day was balanced or data is sparse, return empty array []
 
-Return: {"summary": "Your rich, personalized daily story...", "suggestions": [{"text": "Tomorrow: finish [their specific goal]", "type": "intention", "timeframe": "daily"}]}`;
+Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);
@@ -273,12 +276,13 @@ Return: {"summary": "Your rich, personalized daily story...", "suggestions": [{"
             }
 
             case 'weekly-reflection': {
-                const { entries, intentions } = payload;
-                const prompt = `You are the user's strategic life coach. Generate a Weekly Reflection. Respond with ONLY JSON.
+                const { entries, intentions, habits } = payload;
+                const prompt = `You are the user's strategic life coach. Generate a Weekly Reflection. Respond with ONLY valid JSON.
 
 THIS WEEK'S DATA:
 Entries: ${entries || 'No entries this week'}
 Goals: ${intentions || 'No active goals'}
+Habits Tracked: ${habits || 'No habits'}
 
 YOUR TASK - SUMMARY (3-5 sentences):
 - What was the dominant emotional theme this week?
@@ -287,13 +291,14 @@ YOUR TASK - SUMMARY (3-5 sentences):
 - End with an encouraging observation about their trajectory
 
 YOUR TASK - SUGGESTIONS (max 1):
+CRITICAL: Must be 15 words or fewer. One short sentence only.
 - MUST reference a SPECIFIC goal or pattern from their data
-- Should be strategic, not tactical
-- BAD: "Focus on self-care" (generic)
-- GOOD: "Break down 'Launch project' into 3 daily tasks" (references their goal)
-- If week was balanced, return empty array
+- Do NOT suggest things they already track as habits
+- BAD: "Given the consistent theme of sleep affecting your performance..." (too long!)
+- GOOD: "Break 'Launch project' into 3 small daily tasks" (short, specific)
+- If week was balanced, return empty array []
 
-Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "This week: [specific action on their specific goal]", "type": "intention", "timeframe": "weekly"}]}`;
+Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "Max 15 words action item", "type": "intention", "timeframe": "weekly"}]}`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);
@@ -302,27 +307,32 @@ Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "This w
 
             case 'monthly-reflection': {
                 const { entries, intentions } = payload;
-                const prompt = `You are the user's wise life coach. Generate a Monthly Reflection. This is a high-level chapter review. Respond with ONLY JSON.
+                const prompt = `You are the user's wise life coach. Generate a Monthly Reflection. Respond with ONLY valid JSON.
 
 THIS MONTH'S DATA:
 Entries: ${entries || 'No entries this month'}
 Goals: ${intentions || 'No active goals'}
 
-YOUR TASK - SUMMARY (4-6 sentences):
-- Give this month a "Chapter Title" - what was it about?
-- Describe the sentiment arc: how did they start vs end the month?
+YOUR TASK - SUMMARY (4-6 sentences as ONE paragraph):
+Write a cohesive narrative paragraph that includes:
+- A "chapter title" feeling (e.g., "This was the month of...")
+- The sentiment arc: how did they start vs end the month?
 - Which goals saw progress? Which got stuck? Be specific by name
 - What life area (Health, Career, Relationships, Growth) got the most attention?
 - End with an inspiring observation about their growth
 
+IMPORTANT: Return summary as a PLAIN TEXT string, not nested JSON. No chapter_title field, no sentiment_arc field - just one flowing paragraph.
+
 YOUR TASK - SUGGESTIONS (max 1):
 - Should be a meaningful goal for next month
+- Maximum 15 words
 - MUST connect to patterns you noticed in their data
 - BAD: "Set clearer goals" (generic advice)
-- GOOD: "Next month: dedicate mornings to 'Learn Spanish' goal" (specific to their data)
-- If month was well-balanced, return empty array
+- GOOD: "Next month: dedicate mornings to 'Learn Spanish'" (specific)
+- If month was well-balanced, return empty array []
 
-Return: {"summary": "Your month's chapter...", "suggestions": [{"text": "Next month: [specific aspiration]", "type": "intention", "timeframe": "monthly"}]}`;
+Return exactly this format:
+{"summary": "This month you... (full paragraph here)...", "suggestions": [{"text": "Next month: specific action", "type": "intention", "timeframe": "monthly"}]}`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);
