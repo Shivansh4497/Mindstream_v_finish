@@ -1,7 +1,8 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 6, 2025 (v6.1)  
+> **Last Updated:** December 6, 2025 (v6.2 - MVP Verification Complete)  
+> **Coverage:** All user interactions, redirections, and navigation paths  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -547,3 +548,72 @@ Settings View
 | Has visited Insights | localStorage | `hasVisitedInsights_{userId}` |
 | TTS preference | localStorage | `ttsEnabled` |
 | All data | Supabase (PostgreSQL) | User-scoped with RLS |
+
+---
+
+## 14. MVP Verification & Smoke Tests (December 2025)
+
+> **Verification Date:** December 6, 2025  
+> **Status:** ✅ All Core Flows Verified
+
+### 14.1 Smoke Test Results
+
+| Test | Status | Evidence |
+|------|--------|----------|
+| Stream View loads | ✅ Pass | Entries displayed correctly |
+| Habits - dots appear | ✅ Pass | Creation-date-aware (newer habits = fewer dots) |
+| Habits - toggle works | ✅ Pass | Optimistic update + sync |
+| Goals - urgency groups | ✅ Pass | "Overdue", "Today", "This Week" visible |
+| Goals - edit button | ✅ Pass | Pencil icon opens EditIntentionModal |
+| Insights - reflections shown | ✅ Pass | Daily/Weekly summaries with suggestions |
+| Chat - AI greeting | ✅ Pass | Welcome message loads |
+| Chat - smart starters | ✅ Pass | Context-aware suggestions visible |
+| Chat - ephemerality notice | ✅ Pass | "Conversations reset" tooltip shown |
+| Edit Modal | ✅ Pass | Opens with correct text, cancel/save work |
+
+### 14.2 Error Handling
+
+| Scenario | Behavior | Status |
+|----------|----------|--------|
+| AI enrichment fails | Toast: "Entry saved! AI enrichment will retry later." | ✅ |
+| Voice permission denied | Toast: "🎤 Microphone access denied..." | ✅ |
+| No speech detected | Toast: "🎤 No speech detected. Try again." | ✅ |
+| Browser no voice support | Toast: "🎤 Voice input not supported in this browser." | ✅ |
+
+### 14.3 Analytics Events Verified
+
+| Event | Trigger | Properties |
+|-------|---------|------------|
+| `first_insight_viewed` | InsightModal shown for first time | `{}` |
+| `first_action_taken` | First habit/goal/chat from InsightModal | `{ type }` |
+| `reflection_generated` | Daily/Weekly/Monthly reflection created | `{ type, date }` |
+| `insight_modal_shown` | InsightModal displayed | `{ confidence, has_habit_suggestion }` |
+| `insight_modal_action` | Modal button clicked | `{ action }` |
+| `error_event` | AI or system error | `{ source, message }` |
+
+### 14.4 Security (RLS) Verified
+
+All tables have Row Level Security enabled with proper policies:
+
+| Table | Policies | Status |
+|-------|----------|--------|
+| `entries` | ALL (own) | ✅ SECURE |
+| `habits` | DELETE, INSERT, UPDATE, SELECT (own) | ✅ SECURE |
+| `habit_logs` | DELETE, INSERT, SELECT (own) | ✅ SECURE |
+| `intentions` | ALL (own) | ✅ SECURE |
+| `reflections` | ALL (own) | ✅ SECURE |
+| `analytics_events` | INSERT, SELECT (own) | ✅ SECURE |
+| `insight_cards` | INSERT, UPDATE, SELECT (own) | ✅ SECURE |
+| `proactive_nudges` | INSERT, UPDATE, SELECT (own) | ✅ SECURE |
+| `profiles` | DELETE, ALL (own) | ✅ SECURE |
+| `user_preferences` | INSERT, UPDATE, SELECT (own) | ✅ SECURE |
+| `chart_insights` | INSERT (service+own), SELECT, UPDATE (own) | ✅ SECURE |
+
+### 14.5 Monitoring & Error Tracking
+
+| Tool | Status | Configuration |
+|------|--------|---------------|
+| Sentry | ✅ Active | DSN configured in VITE_SENTRY_DSN |
+| Session Replay | ✅ Enabled | 100% on error, 10% normal |
+| Performance Tracing | ✅ Enabled | 10% sample rate |
+
