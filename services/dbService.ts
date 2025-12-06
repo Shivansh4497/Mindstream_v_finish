@@ -856,13 +856,16 @@ export type AnalyticsEvent =
     | 'onboarding_completed'
     | 'entry_created'
     | 'insight_modal_action'
-    | 'insight_modal_shown'  // NEW: when modal is displayed
+    | 'insight_modal_shown'
+    | 'first_insight_viewed'   // NEW: one-time event when first insight modal shown
+    | 'first_action_taken'     // NEW: one-time event for first habit/goal/chat action
+    | 'reflection_generated'   // NEW: when daily/weekly/monthly reflection is generated
     | 'habit_completed'
     | 'insights_unlocked'
     | 'app_opened'
     | 'chat_message_sent'
     | 'voice_input_used'
-    | 'error_event';  // NEW: for AI/system errors
+    | 'error_event';
 
 export const logEvent = async (
     userId: string,

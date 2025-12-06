@@ -156,6 +156,10 @@ export const MindstreamApp: React.FC = () => {
                         has_habit_suggestion: !!habitSuggestion,
                         has_intention_suggestion: !!intentionSuggestion
                     });
+                    // Track first insight viewed (one-time event)
+                    if (!hasSeenFirstInsight) {
+                        db.logEvent(user.id, 'first_insight_viewed', {});
+                    }
                 }
             } else {
                 // Low confidence: show as toast instead of modal
@@ -338,6 +342,7 @@ export const MindstreamApp: React.FC = () => {
                                         const saved = await db.addReflection(user!.id, { ...res, date, type: 'daily' });
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === date && r.type === 'daily')), saved]);
                                         actions.setIsGeneratingReflection(null);
+                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'daily', date });
                                     }}
                                     onGenerateWeekly={async (weekId, weekEntries) => {
                                         actions.setIsGeneratingReflection(weekId);
@@ -346,6 +351,7 @@ export const MindstreamApp: React.FC = () => {
                                         const reflectionForState = { ...saved, date: weekId };
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), reflectionForState]);
                                         actions.setIsGeneratingReflection(null);
+                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'weekly', week_id: weekId });
                                     }}
                                     onGenerateMonthly={async (monthId, monthEntries) => {
                                         actions.setIsGeneratingReflection(monthId);
@@ -354,6 +360,7 @@ export const MindstreamApp: React.FC = () => {
                                         const reflectionForState = { ...saved, date: monthId };
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), reflectionForState]);
                                         actions.setIsGeneratingReflection(null);
+                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'monthly', month_id: monthId });
                                     }}
                                     onExploreInChat={(summary) => {
                                         setView('chat');
@@ -465,10 +472,14 @@ export const MindstreamApp: React.FC = () => {
                     suggestedHabit={state.pendingInsight?.suggestedHabit}
                     suggestedIntention={state.pendingInsight?.suggestedIntention}
                     onTrackHabit={() => {
+                        const isFirstAction = !hasSeenFirstInsight;
                         setHasSeenFirstInsight(true);
                         actions.setPendingInsight(null);
                         setView('habits');
-                        if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'habit' });
+                        if (user) {
+                            db.logEvent(user.id, 'insight_modal_action', { action: 'habit' });
+                            if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'habit' });
+                        }
                         // The HabitsView has its own add flow - we could pre-fill but for now just navigate
                         if (state.pendingInsight?.suggestedHabit) {
                             actions.handleAddHabit(state.pendingInsight.suggestedHabit.name, 'daily');
@@ -476,10 +487,14 @@ export const MindstreamApp: React.FC = () => {
                         }
                     }}
                     onSetGoal={() => {
+                        const isFirstAction = !hasSeenFirstInsight;
                         setHasSeenFirstInsight(true);
                         actions.setPendingInsight(null);
                         setView('intentions');
-                        if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'goal' });
+                        if (user) {
+                            db.logEvent(user.id, 'insight_modal_action', { action: 'goal' });
+                            if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'goal' });
+                        }
                         // Add the suggested intention
                         if (state.pendingInsight?.suggestedIntention) {
                             actions.handleAddIntention(state.pendingInsight.suggestedIntention, null, false);
@@ -487,12 +502,16 @@ export const MindstreamApp: React.FC = () => {
                         }
                     }}
                     onExploreChat={() => {
+                        const isFirstAction = !hasSeenFirstInsight;
                         setHasSeenFirstInsight(true);
                         const entryText = state.pendingInsight?.entryText || '';
                         const followUp = state.pendingInsight?.followUpQuestion || '';
                         actions.setPendingInsight(null);
                         setView('chat');
-                        if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'chat' });
+                        if (user) {
+                            db.logEvent(user.id, 'insight_modal_action', { action: 'chat' });
+                            if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'chat' });
+                        }
                         // Seed the chat with context
                         if (entryText) {
                             actions.handleSendMessage(entryText);

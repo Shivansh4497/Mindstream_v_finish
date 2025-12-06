@@ -1,10 +1,31 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { SUPABASE_CREDENTIALS_AVAILABLE } from './services/supabaseClient';
 import { GEMINI_API_KEY_AVAILABLE } from './services/geminiService';
 import { ConfigurationError } from './components/ConfigurationError';
+
+// Initialize Sentry for error monitoring
+// DSN should be set in environment variable VITE_SENTRY_DSN
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 0.1, // 10% of transactions
+    // Session Replay
+    replaysSessionSampleRate: 0.1, // 10% of sessions
+    replaysOnErrorSampleRate: 1.0, // 100% on error
+    // Environment
+    environment: import.meta.env.MODE,
+  });
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
