@@ -154,12 +154,20 @@ Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, F
 
             case 'suggestions': {
                 const { entryText, isTest } = payload;
-                const prompt = `Analyze this journal entry and suggest helpful habits or intentions. Respond with ONLY JSON (no markdown):
-Entry: "${entryText}"
-${isTest ? "TEST MODE: Always suggest at least one habit and one intention." : "Suggest habits or intentions that would help the user based on their entry. Be generous with suggestions."}
+                const prompt = `You are a wise, selective coach. Analyze this journal entry. Respond with ONLY JSON.
 
-Return: {"suggestions": [{"type": "habit", "label": "Do X daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Achieve Y", "data": {"timeframe": "weekly"}}]}
-Return at least one suggestion if the entry expresses any goal, desire, struggle, or aspiration.`;
+Entry: "${entryText}"
+
+RULES:
+- Only suggest if the entry shows CLEAR intent to change behavior, build a habit, or achieve a goal
+- NO suggestions for: test entries, casual observations, vague statements, technical notes
+- Maximum 1-2 suggestions total (prefer 0-1)
+- Labels must be SHORT (5-7 words max), actionable, specific
+- Use "habit" for recurring behaviors, "intention" for one-time goals
+${isTest ? "- TEST MODE: Override rules, always return one habit and one intention." : "- Be VERY selective. When in doubt, return empty array."}
+
+Return: {"suggestions": [{"type": "habit", "label": "Meditate 5 mins daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Run first 5K by March", "data": {"timeframe": "weekly"}}]}
+If entry doesn't warrant suggestions, return: {"suggestions": []}`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);
