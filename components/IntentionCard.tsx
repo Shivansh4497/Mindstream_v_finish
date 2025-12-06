@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import type { Intention, IntentionStatus } from '../types';
 import { TrashIcon } from './icons/TrashIcon';
+import { PencilIcon } from './icons/PencilIcon';
 import { Star } from 'lucide-react';
 import { celebrate, CelebrationType } from '../utils/celebrations';
 import { triggerHaptic } from '../utils/haptics';
@@ -10,10 +11,11 @@ interface IntentionCardProps {
   intention: Intention;
   onToggle: (id: string, currentStatus: IntentionStatus) => void;
   onDelete: (id: string) => void;
-  onStarToggle: (id: string, isStarred: boolean) => void;
+  onStarToggle?: (id: string, isStarred: boolean) => void;
+  onEdit?: (intention: Intention) => void;
 }
 
-export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggle, onDelete, onStarToggle }) => {
+export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggle, onDelete, onStarToggle, onEdit }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleToggle = () => {
@@ -58,13 +60,26 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
       </div>
 
       {/* Star Button */}
-      <button
-        onClick={() => onStarToggle(intention.id, intention.is_starred || false)}
-        className={`p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0 mr-1 ${intention.is_starred ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
-        aria-label="Toggle star"
-      >
-        <Star className={`w-5 h-5 ${intention.is_starred ? 'fill-amber-400' : ''}`} />
-      </button>
+      {onStarToggle && (
+        <button
+          onClick={() => onStarToggle(intention.id, intention.is_starred || false)}
+          className={`p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0 mr-1 ${intention.is_starred ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
+          aria-label="Toggle star"
+        >
+          <Star className={`w-5 h-5 ${intention.is_starred ? 'fill-amber-400' : ''}`} />
+        </button>
+      )}
+
+      {/* Edit Button */}
+      {onEdit && (
+        <button
+          onClick={() => onEdit(intention)}
+          className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-brand-teal transition-colors flex-shrink-0"
+          aria-label="Edit intention"
+        >
+          <PencilIcon className="w-5 h-5" />
+        </button>
+      )}
 
       <button
         onClick={() => onDelete(intention.id)}

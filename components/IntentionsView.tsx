@@ -10,6 +10,7 @@ interface IntentionsViewProps {
     onToggle: (id: string, currentStatus: Intention['status']) => void;
     onDelete: (id: string) => void;
     onStarToggle: (id: string, isStarred: boolean) => void;
+    onEdit?: (intention: Intention) => void;
 }
 
 const urgencyCategoryOrder: UrgencyCategory[] = ['overdue', 'today', 'this_week', 'this_month', 'later', 'life'];
@@ -18,7 +19,8 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
     intentions,
     onToggle,
     onDelete,
-    onStarToggle
+    onStarToggle,
+    onEdit
 }) => {
     const [showCompleted, setShowCompleted] = useState(false);
     const [isOverdueCollapsed, setIsOverdueCollapsed] = useState(true); // Default to collapsed
@@ -133,6 +135,7 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
                                                 onToggle={onToggle}
                                                 onDelete={onDelete}
                                                 onStarToggle={onStarToggle}
+                                                onEdit={onEdit}
                                             />
                                         ))}
                                     </div>
@@ -159,6 +162,7 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
                                     onToggle={onToggle}
                                     onDelete={onDelete}
                                     onStarToggle={onStarToggle}
+                                    onEdit={onEdit}
                                 />
                             ))}
                         </div>
@@ -195,6 +199,7 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
                                         intention={intention}
                                         onToggle={onToggle}
                                         onDelete={onDelete}
+                                        onEdit={onEdit}
                                     />
                                 ))}
                             </div>

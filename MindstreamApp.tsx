@@ -22,6 +22,7 @@ import { Toast } from './components/Toast';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import { EditEntryModal } from './components/EditEntryModal';
 import { EditHabitModal } from './components/EditHabitModal';
+import { EditIntentionModal } from './components/EditIntentionModal';
 import { HabitsView } from './components/HabitsView';
 import { HabitsInputBar } from './components/HabitsInputBar';
 import { SettingsView } from './components/SettingsView';
@@ -38,7 +39,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import * as gemini from './services/geminiService';
 import * as reflections from './services/reflectionService';
 import * as db from './services/dbService';
-import type { Entry, IntentionTimeframe, Habit, HabitFrequency } from './types';
+import type { Entry, IntentionTimeframe, Habit, HabitFrequency, Intention } from './types';
 
 const LOADING_TIMEOUT_MS = 15000; // 15 seconds
 
@@ -61,6 +62,7 @@ export const MindstreamApp: React.FC = () => {
     const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
     const [entryToEdit, setEntryToEdit] = useState<Entry | null>(null);
     const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
+    const [intentionToEdit, setIntentionToEdit] = useState<Intention | null>(null);
     const [showThematicModal, setShowThematicModal] = useState(false);
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [thematicReflection, setThematicReflection] = useState<string | null>(null);
@@ -309,6 +311,7 @@ export const MindstreamApp: React.FC = () => {
                                     onDeleteIntention={actions.handleDeleteIntention}
                                     onAddIntention={actions.handleAddIntention}
                                     onStarToggleIntention={actions.handleToggleStar}
+                                    onEditIntention={setIntentionToEdit}
                                 />
                             </motion.div>
                         )}
@@ -431,6 +434,7 @@ export const MindstreamApp: React.FC = () => {
                 {entryToDelete && <DeleteConfirmationModal onConfirm={() => { actions.handleDeleteEntry(entryToDelete); setEntryToDelete(null); }} onCancel={() => setEntryToDelete(null)} />}
                 {entryToEdit && <EditEntryModal entry={entryToEdit} onSave={async (txt) => { await actions.handleEditEntry(entryToEdit, txt); setEntryToEdit(null); }} onCancel={() => setEntryToEdit(null)} />}
                 {habitToEdit && <EditHabitModal habit={habitToEdit} onSave={async (name, emoji, category) => { await actions.handleEditHabit(habitToEdit.id, name, emoji, category); setHabitToEdit(null); }} onCancel={() => setHabitToEdit(null)} />}
+                {intentionToEdit && <EditIntentionModal intention={intentionToEdit} onSave={async (text) => { await db.updateIntention(intentionToEdit.id, { text }); window.location.reload(); }} onCancel={() => setIntentionToEdit(null)} />}
                 {showThematicModal && selectedTag && (
                     <ThematicModal
                         tag={selectedTag}

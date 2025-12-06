@@ -26,13 +26,14 @@ interface FocusViewProps {
     onDeleteIntention: (id: string) => void;
     onAddIntention: (text: string, dueDate: Date | null, isLifeGoal: boolean) => Promise<void>;
     onStarToggleIntention: (id: string, isStarred: boolean) => void;
+    onEditIntention?: (intention: Intention) => void;
 }
 
 type FocusTab = 'habits' | 'goals';
 
 export const FocusView: React.FC<FocusViewProps> = ({
     habits, todaysLogs, onToggleHabit, onEditHabit, onDeleteHabit, onAddHabit, isAddingHabit, activeHabitFrequency, onHabitFrequencyChange,
-    intentions, onToggleIntention, onDeleteIntention, onAddIntention, onStarToggleIntention
+    intentions, onToggleIntention, onDeleteIntention, onAddIntention, onStarToggleIntention, onEditIntention
 }) => {
     const [activeTab, setActiveTab] = useState<FocusTab>('habits');
 
@@ -108,6 +109,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
                                 onToggle={onToggleIntention}
                                 onDelete={onDeleteIntention}
                                 onStarToggle={onStarToggleIntention}
+                                onEdit={onEditIntention}
                             />
                             <IntentionsInputBar onAddIntention={onAddIntention} />
                         </motion.div>
