@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 6, 2025  
+> **Last Updated:** December 6, 2025 (v6.1)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -217,8 +217,19 @@ Focus View
 
 **Add Habit:** [HabitsInputBar.tsx](file:///Users/director/Mindstream_v1/components/HabitsInputBar.tsx)
 1. Type habit name
-2. AI auto-assigns: category, emoji
+2. AI auto-assigns: category, emoji (async, non-blocking)
 3. Created with current frequency tab
+
+**NEW v6.1 - Creation-Date-Aware Tracking:**
+- Habits only show tracking dots from creation date forward
+- Prevents "fake broken streak" impression for new habits
+- Daily: 1-7 dots (days since creation)
+- Weekly: 1-4 dots (weeks since creation)
+- Monthly: 1-6 dots (months since creation)
+
+**NEW v6.1 - Edit Habit Modal:** [EditHabitModal.tsx](file:///Users/director/Mindstream_v1/components/EditHabitModal.tsx)
+- Expand card → "Edit" button
+- Edit: name, emoji, category
 
 ### 5.3 Goals Tab
 **Component:** [IntentionsView.tsx](file:///Users/director/Mindstream_v1/components/IntentionsView.tsx)
@@ -254,6 +265,19 @@ Focus View
 | Life | is_life_goal = true |
 | Custom | Date picker |
 
+**NEW v6.1 - Timezone-Safe Storage:**
+- Dates stored as `YYYY-MM-DD` in local time
+- Prevents offset bugs (e.g., "Today" showing as tomorrow)
+
+**NEW v6.1 - AI Tagging:**
+- Intention created with defaults (🎯 emoji, "Growth" category)
+- Background AI call assigns personalized emoji + category
+- UI updates when AI responds (non-blocking)
+
+**NEW v6.1 - Edit Intention Modal:** [EditIntentionModal.tsx](file:///Users/director/Mindstream_v1/components/EditIntentionModal.tsx)
+- Pencil icon on IntentionCard
+- Edit: intention text (emoji/category preserved)
+
 ---
 
 ## 6. Insights View Flows
@@ -285,6 +309,24 @@ Insights View (unlocks at 5 entries)
 2. AI analyzes entries + habits + intentions
 3. Summary displayed in ReflectionCard
 4. "Explore in Chat" button redirects to Chat with context
+
+**NEW v6.1 - AI Quality Requirements:**
+
+*Summary must:*
+- 3-5 sentences (daily/weekly), 4-6 sentences (monthly)
+- Paint the emotional arc of the period
+- Celebrate ONE specific win (by name)
+- Offer ONE gentle observation
+
+*Suggestions must:*
+- Reference **user's actual data** (specific goal name, habit name)
+- Be 5-12 words, actionable, specific
+- Return **empty array** if period was balanced (prefer 0 over generic)
+
+| ❌ Bad Suggestion | ✅ Good Suggestion |
+|-------------------|-------------------|
+| "Prioritize your pending goals" | "Complete the 'Finish migration' goal tomorrow" |
+| "Focus on self-care" | "Break down 'Launch project' into 3 daily tasks" |
 
 ### 6.3 Deep Dive Tab
 **Component:** [LifeAreaDashboard.tsx](file:///Users/director/Mindstream_v1/components/LifeAreaDashboard.tsx)
@@ -439,8 +481,13 @@ Settings View
 **Actions:** Confirm | Cancel
 
 ### 9.5 Edit Habit Modal
-**Trigger:** Long-press or edit icon on HabitCard
+**Trigger:** Expand card, click "Edit" button
 **Actions:** Edit name/emoji/category → Save | Cancel
+
+### 9.6 Edit Intention Modal (NEW v6.1)
+**Component:** [EditIntentionModal.tsx](file:///Users/director/Mindstream_v1/components/EditIntentionModal.tsx)
+**Trigger:** Pencil icon on IntentionCard
+**Actions:** Edit text → Save | Cancel
 
 ---
 
