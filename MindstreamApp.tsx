@@ -348,8 +348,7 @@ export const MindstreamApp: React.FC = () => {
                                         actions.setIsGeneratingReflection(weekId);
                                         const res = await reflections.generateWeeklyReflection(weekEntries, state.intentions);
                                         const saved = await db.addReflection(user!.id, { ...res, date: weekId, type: 'weekly' });
-                                        const reflectionForState = { ...saved, date: weekId };
-                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), reflectionForState]);
+                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), saved]);
                                         actions.setIsGeneratingReflection(null);
                                         if (user) db.logEvent(user.id, 'reflection_generated', { type: 'weekly', week_id: weekId });
                                     }}
@@ -357,8 +356,7 @@ export const MindstreamApp: React.FC = () => {
                                         actions.setIsGeneratingReflection(monthId);
                                         const res = await reflections.generateMonthlyReflection(monthEntries, state.intentions);
                                         const saved = await db.addReflection(user!.id, { ...res, date: monthId, type: 'monthly' });
-                                        const reflectionForState = { ...saved, date: monthId };
-                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), reflectionForState]);
+                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), saved]);
                                         actions.setIsGeneratingReflection(null);
                                         if (user) db.logEvent(user.id, 'reflection_generated', { type: 'monthly', month_id: monthId });
                                     }}

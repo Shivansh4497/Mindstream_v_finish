@@ -212,6 +212,10 @@ export const getReflections = async (userId: string): Promise<Reflection[]> => {
 
 export const addReflection = async (userId: string, reflectionData: Omit<Reflection, 'id' | 'user_id' | 'timestamp'>): Promise<Reflection> => {
     if (!supabase) throw new Error("Supabase client not initialized");
+
+    // Store the original date format before converting for DB
+    const originalDate = reflectionData.date;
+
     let dateForDb = reflectionData.date;
     if (reflectionData.type === 'weekly') {
         dateForDb = getDateFromWeekId(reflectionData.date).toISOString().split('T')[0];
@@ -242,7 +246,8 @@ export const addReflection = async (userId: string, reflectionData: Omit<Reflect
         throw error;
     }
 
-    return data as Reflection;
+    // Return with original date format (weekId/monthId) so state stays consistent
+    return { ...data, date: originalDate } as Reflection;
 };
 
 // Intention Functions
