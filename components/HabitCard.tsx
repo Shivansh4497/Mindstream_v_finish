@@ -50,30 +50,51 @@ export const HabitCard: React.FC<HabitCardProps> = ({ habit, logs, onToggle, onE
     }, [logs, habit.frequency]);
 
     // Generate visualization items based on frequency
+    // Only show dates from when the habit was created (Option A: fewer dots)
     const getHistoryItems = () => {
         const now = new Date();
-        const items = [];
+        const createdAt = new Date(habit.created_at);
+        const items: Date[] = [];
 
         if (habit.frequency === 'daily') {
-            // Last 7 days
+            // Last 7 days, but only from creation date
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(now);
                 d.setDate(d.getDate() - i);
-                items.push(d);
+                // Only include if date is >= creation date (comparing just dates, not times)
+                if (d.setHours(0, 0, 0, 0) >= createdAt.setHours(0, 0, 0, 0)) {
+                    items.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i));
+                }
             }
         } else if (habit.frequency === 'weekly') {
-            // Last 4 weeks
+            // Last 4 weeks, but only from creation week
+            const createdWeekStart = new Date(createdAt);
+            createdWeekStart.setDate(createdAt.getDate() - createdAt.getDay()); // Start of creation week
+            createdWeekStart.setHours(0, 0, 0, 0);
+
             for (let i = 3; i >= 0; i--) {
                 const d = new Date(now);
                 d.setDate(d.getDate() - (i * 7));
-                items.push(d);
+                const weekStart = new Date(d);
+                weekStart.setDate(d.getDate() - d.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+
+                if (weekStart >= createdWeekStart) {
+                    items.push(d);
+                }
             }
         } else {
-            // Last 6 months
+            // Last 6 months, but only from creation month
+            const createdMonthStart = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
+
             for (let i = 5; i >= 0; i--) {
                 const d = new Date(now);
                 d.setMonth(d.getMonth() - i);
-                items.push(d);
+                const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+
+                if (monthStart >= createdMonthStart) {
+                    items.push(d);
+                }
             }
         }
         return items;
