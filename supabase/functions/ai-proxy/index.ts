@@ -16,7 +16,7 @@ const PRIMARY_MODEL = 'gemini-2.0-flash';
 const BACKUP_MODEL = 'gemini-2.5-flash';
 
 interface GeminiRequest {
-    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
+    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
     payload: Record<string, any>;
 }
 
@@ -197,6 +197,18 @@ Return: {"insight": "Your insight...", "followUpQuestion": "Your question?", "co
 Habit: "${habitName}"
 Categories: Health, Growth, Career, Finance, Connection, System
 Return: {"emoji": "🏃", "category": "Health"}`;
+
+                const response = await callGemini(prompt);
+                result = parseJSON(response);
+                break;
+            }
+
+            case 'analyze-intention': {
+                const { intentionText } = payload;
+                const prompt = `Classify this intention/goal and assign an emoji. Respond with ONLY JSON:
+Intention: "${intentionText}"
+Categories: Health, Growth, Career, Finance, Connection, System
+Return: {"emoji": "🎯", "category": "Growth"}`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);

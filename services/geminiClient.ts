@@ -8,6 +8,7 @@ export type AIProxyAction =
     | 'suggestions'
     | 'instant-insight'
     | 'analyze-habit'
+    | 'analyze-intention'
     | 'extract-keywords'
     | 'chat'
     | 'daily-reflection'

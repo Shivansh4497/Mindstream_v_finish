@@ -263,14 +263,24 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
 export const addIntention = async (userId: string, text: string, dueDate: Date | null = null, isLifeGoal: boolean = false, isStarred: boolean = false): Promise<Intention | null> => {
     if (!supabase) return null;
 
+    // Format as local date string (YYYY-MM-DD) to avoid timezone offset issues
+    const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const intentionData = {
         user_id: userId,
         text,
-        due_date: dueDate ? dueDate.toISOString() : null,
+        due_date: dueDate ? formatLocalDate(dueDate) : null,
         is_life_goal: isLifeGoal,
         is_starred: isStarred,
         status: 'pending',
         is_recurring: false,
+        emoji: '🎯', // Default emoji, will be updated by AI
+        category: 'Growth' as const, // Default category, will be updated by AI
     };
 
     console.log('Creating intention with data:', intentionData);
@@ -287,7 +297,35 @@ export const addIntention = async (userId: string, text: string, dueDate: Date |
     }
 
     console.log('Intention created successfully:', data);
+
+    // Async AI tagging - don't block on this
+    analyzeIntentionAsync(data.id, text);
+
     return data;
+};
+
+// Async function to analyze and update intention with AI-assigned emoji/category
+const analyzeIntentionAsync = async (intentionId: string, intentionText: string) => {
+    try {
+        const { callAIProxy } = await import('./geminiClient');
+        const result = await callAIProxy<{ emoji: string; category: string }>('analyze-intention', {
+            intentionText
+        });
+
+        if (result?.emoji || result?.category) {
+            await (supabase as any)
+                .from('intentions')
+                .update({
+                    emoji: result.emoji || '🎯',
+                    category: result.category || 'Growth'
+                })
+                .eq('id', intentionId);
+            console.log(`[AI Tagging] Intention updated: ${result.emoji} ${result.category}`);
+        }
+    } catch (e) {
+        console.warn('[AI Tagging] Failed to analyze intention:', e);
+        // Silently fail - default emoji/category already set
+    }
 };
 
 export const updateIntentionStatus = async (id: string, status: IntentionStatus): Promise<Intention | null> => {

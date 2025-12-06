@@ -71,6 +71,8 @@ export interface Intention {
   user_id: string;
   text: string;
   status: IntentionStatus;
+  emoji?: string; // NEW: AI-assigned emoji
+  category?: 'Health' | 'Growth' | 'Career' | 'Finance' | 'Connection' | 'System'; // NEW: AI-assigned category
   timeframe?: IntentionTimeframe; //  Deprecated, use due_date instead
   due_date?: string | null; // NEW: ISO timestamp for deadline
   is_life_goal?: boolean; // NEW: True for ongoing life goals
