@@ -1592,7 +1592,10 @@ Production URL: mindstream-v1.vercel.app
 **Required in Vercel:**
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_GEMINI_API_KEY` (client-side for now)
+- `VITE_SENTRY_DSN` (for error monitoring)
+
+**Required in Supabase Secrets (Server-Side):**
+- `GEMINI_API_KEY` (used by `ai-proxy` Edge Function - never exposed to client)
 
 ---
 

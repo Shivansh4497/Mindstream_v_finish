@@ -365,9 +365,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
             <LockIcon className="w-12 h-12 text-brand-teal" />
           </div>
           <h1 className="text-3xl font-bold font-display text-white mb-4">Your Private Sanctuary</h1>
-          <p className="text-gray-300 max-w-md mb-12 text-lg leading-relaxed">
+          <p className="text-gray-300 max-w-md mb-6 text-lg leading-relaxed">
             Mindstream is an encrypted space for your unfiltered mind.
             What you write here is seen only by you.
+          </p>
+          <p className="text-gray-500 text-sm max-w-sm mb-8">
+            ✨ AI helps organize your thoughts and generate insights.
+            Your data never leaves our secure servers.
           </p>
           <button
             onClick={handleEnterSanctuary}
