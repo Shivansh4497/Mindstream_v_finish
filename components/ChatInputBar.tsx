@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MicIcon } from './icons/MicIcon';
 import { SendIcon } from './icons/SendIcon';
+import { useToast, Toast } from './Toast';
 
 // Web Speech API Type Definitions
 interface SpeechRecognitionAlternative {
@@ -48,6 +49,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isLoa
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(recognition);
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     const rec = recognitionRef.current;
@@ -71,8 +73,25 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isLoa
 
     rec.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error', event.error);
-      alert(`Speech recognition error: ${event.error}`);
       setIsListening(false);
+
+      // User-friendly error messages
+      switch (event.error) {
+        case 'not-allowed':
+          showToast('🎤 Microphone access denied. Please enable in browser settings.', 'error');
+          break;
+        case 'no-speech':
+          showToast('🎤 No speech detected. Try again.', 'warning');
+          break;
+        case 'network':
+          showToast('🎤 Network error. Check your connection.', 'error');
+          break;
+        case 'audio-capture':
+          showToast('🎤 No microphone found. Check your device.', 'error');
+          break;
+        default:
+          showToast(`🎤 Voice input error: ${event.error}`, 'error');
+      }
     };
 
     return () => {
@@ -92,7 +111,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isLoa
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Sorry, your browser doesn't support voice recognition.");
+      showToast('🎤 Voice input not supported in this browser. Try Chrome.', 'warning');
       return;
     }
     if (isListening) {
@@ -144,6 +163,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isLoa
           <SendIcon className="w-6 h-6 text-white" />
         </button>
       </form>
+      {toast && <Toast message={toast.message} type={toast.type} onDismiss={hideToast} />}
     </footer>
   );
 };

@@ -89,8 +89,25 @@ export const InputBar: React.FC<InputBarProps> = ({ onAddEntry }) => {
 
     rec.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error', event.error);
-      alert(`Speech recognition error: ${event.error}`);
       setIsListening(false);
+
+      // User-friendly error messages
+      switch (event.error) {
+        case 'not-allowed':
+          showToast('🎤 Microphone access denied. Please enable in browser settings.', 'error');
+          break;
+        case 'no-speech':
+          showToast('🎤 No speech detected. Try again.', 'warning');
+          break;
+        case 'network':
+          showToast('🎤 Network error. Check your connection.', 'error');
+          break;
+        case 'audio-capture':
+          showToast('🎤 No microphone found. Check your device.', 'error');
+          break;
+        default:
+          showToast(`🎤 Voice input error: ${event.error}`, 'error');
+      }
     };
 
     return () => {
@@ -120,7 +137,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onAddEntry }) => {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Sorry, your browser doesn't support voice recognition.");
+      showToast('🎤 Voice input not supported in this browser. Try Chrome.', 'warning');
       return;
     }
     if (isListening) {

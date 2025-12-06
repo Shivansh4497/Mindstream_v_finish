@@ -870,16 +870,29 @@ export type AnalyticsEvent =
 export const logEvent = async (
     userId: string,
     eventName: AnalyticsEvent,
-    properties?: Record<string, any>
+    properties?: Record<string, any>,
+    clientEventId?: string  // Optional: pass a client-generated UUID for idempotency
 ): Promise<void> => {
     if (!supabase) return;
 
     try {
-        await supabase.from('analytics_events').insert({
+        const eventData: Record<string, any> = {
             user_id: userId,
             event_name: eventName,
             properties: properties || {}
-        });
+        };
+
+        // If clientEventId provided, use upsert to prevent duplicates
+        if (clientEventId) {
+            eventData.client_event_id = clientEventId;
+            await supabase.from('analytics_events').upsert(eventData, {
+                onConflict: 'client_event_id',
+                ignoreDuplicates: true
+            });
+        } else {
+            // No clientEventId - regular insert (for backward compatibility)
+            await supabase.from('analytics_events').insert(eventData);
+        }
     } catch (error) {
         // Silent fail - analytics should never block user actions
         console.warn('Analytics event failed:', eventName, error);
