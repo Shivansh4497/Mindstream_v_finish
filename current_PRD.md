@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.0  
-**Last Updated:** December 6, 2025  
+**Version:** 6.1  
+**Last Updated:** December 6, 2025 (Evening)  
 **Status:** Production (Live on Vercel)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash  
@@ -178,10 +178,23 @@ Mindstream is structured around **6 interconnected pillars** feeding a central d
   - 💰 Finance
   - 💜 Connection
   - 🛠️ System
+- **AI Tagging (Async):** NEW v6.1
+  - Habit created with defaults (🎯 emoji, "Growth" category)
+  - Background AI call assigns personalized emoji + category
+  - Non-blocking: UI updates when AI responds
+- **Creation-Date-Aware Tracking:** NEW v6.1
+  - Habits only show tracking dots from creation date forward
+  - Prevents "fake broken streak" impression for new habits
+  - Daily: 1-7 dots (days since creation)
+  - Weekly: 1-4 dots (weeks since creation)
+  - Monthly: 1-6 dots (months since creation)
 - **Streak Tracking:**
   - Current streak (e.g., "4 day streak 🔥")
-  - Visual history (7 days for Daily, 4 weeks for Weekly, 6 months for Monthly)
+  - Visual history respects creation date
   - Heatmap visualization for detailed pattern analysis
+- **Edit Modal:** NEW v6.1
+  - Expandable card with Edit/Delete buttons
+  - Edit: Change name, emoji, category
 - **Optimistic UI:** Check/uncheck updates instantly, syncs in background with 500ms debounce
 - **Smart Detection:** Pattern detector identifies habit abandonment
 
@@ -194,11 +207,11 @@ Track the habits that power your life.
 
 📚 Read 5 pages
 GROWTH • 4 day streak
-[✓][✓][✓][✓][ ][ ][✓] ← Last 7 days
+[✓][✓][✓][✓] ← Only 4 dots (created 4 days ago)
 
 ⚡ Take vitamins  
-SYSTEM • 2 day streak
-[ ][✓][✓][ ][ ][ ][ ]
+SYSTEM • New today
+[✓] ← Only 1 dot (created today)
 ```
 
 ---
@@ -211,6 +224,7 @@ SYSTEM • 2 day streak
 - **ETA-Based System:** Replaces rigid timeframes with natural language deadlines.
   - **Presets:** Today | Tomorrow | This Week | Next Week | This Month | Life | Custom Date
   - **Smart Calculation:** Auto-sets due dates (e.g., "This Week" → Sunday at 23:59)
+  - **Timezone-Safe Storage:** NEW v6.1 - Dates stored as `YYYY-MM-DD` in local time to prevent offset bugs
 - **Urgency Grouping:** Intentions auto-sorted by deadline:
   - 🔴 Overdue
   - 🟢 Today
@@ -218,10 +232,31 @@ SYSTEM • 2 day streak
   - 🟣 This Month
   - ⚪ Later
   - 🟡 Life Goals
+- **AI Tagging (Async):** NEW v6.1
+  - Intention created with defaults (🎯 emoji, "Growth" category)
+  - Background AI call assigns personalized emoji + category
+  - Non-blocking: UI updates when AI responds
+  - Same 6 categories as Habits (Health, Growth, Career, Finance, Connection, System)
+- **Edit Modal:** NEW v6.1
+  - Pencil icon on each IntentionCard
+  - Edit: Change intention text
+  - Emoji/Category preserved (AI-assigned)
 - **Collapsible History:** Completed items move to a hidden dropdown to reduce clutter.
 - **AI Suggestions:** Reflections and onboarding auto-generate intentions with default deadlines.
 
 **UI Pattern:**
+```
+┌─────────────────────────────────────────────────┐
+│ [ ] 🎯 Complete the migration task             │
+│     Due: Today • Growth                    ⭐ ✏️ 🗑 │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ [✓] 💪 Exercise for 30 minutes                 │
+│     Completed • Health                          │
+└─────────────────────────────────────────────────┘
+```
+
 - **Input:** Modal with one-tap ETA presets + Custom Date picker
 - **List:** Grouped by urgency color codes
 - **Life Goals:** Distinct section for ongoing aspirations without deadlines
@@ -234,13 +269,13 @@ SYSTEM • 2 day streak
 **Purpose:** AI-powered insights connecting inputs (Stream) with behaviors (Habits).
 
 **Types:**
-| Type | Scope | Purpose |
-|------|-------|---------|
-| **Daily** | Last 24 hours | Quick pattern check |
-| **Weekly** | Last 7 days | Deeper synthesis |
-| **Monthly** | Last 30 days | Big-picture themes |
-| **Thematic** | All entries with tag X | Deep-dive analysis |
-| **Yearly** | Annual aggregation | Long-term growth insights |
+| Type | Scope | Summary Length | Max Suggestions |
+|------|-------|----------------|-----------------|
+| **Daily** | Last 24 hours | 3-5 sentences | 1-2 |
+| **Weekly** | Last 7 days | 3-5 sentences | 1 |
+| **Monthly** | Last 30 days | 4-6 sentences | 1 |
+| **Thematic** | All entries with tag X | Variable | Variable |
+| **Yearly** | Annual aggregation | Multi-slide | N/A |
 
 **What It Analyzes:**
 - Entries (feelings, topics)
@@ -248,9 +283,27 @@ SYSTEM • 2 day streak
 - Intentions (progress)
 - Cross-correlations (*"Anxiety spikes when you skip exercise"*)
 
+**AI Quality Requirements:** NEW v6.1
+
+Summary must:
+- Paint the emotional arc of the period
+- Celebrate ONE specific win (by name)
+- Offer ONE gentle observation for improvement
+
+Suggestions must:
+- Reference **user's actual data** (specific goal name, habit name, entry text)
+- Be **5-12 words**, actionable, specific
+- Return **empty array** if period was balanced (prefer no suggestion over generic)
+
+| ❌ Bad Suggestion | ✅ Good Suggestion |
+|-------------------|-------------------|
+| "Prioritize your pending goals" | "Complete the 'Finish migration' goal tomorrow" |
+| "Focus on self-care" | "Break down 'Launch project' into 3 daily tasks" |
+| "Set clearer goals" | "Next month: dedicate mornings to 'Learn Spanish' goal" |
+
 **Output:**
 - Summary paragraph (adapted to selected AI personality)
-- 2-4 AI-generated intention suggestions
+- 0-2 AI-generated, data-specific intention suggestions
 - Display in professional elevated background card
 
 ---
