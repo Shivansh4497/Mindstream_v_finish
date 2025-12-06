@@ -154,12 +154,12 @@ Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, F
 
             case 'suggestions': {
                 const { entryText, isTest } = payload;
-                const prompt = `Analyze if this entry suggests any habits or intentions. Respond with ONLY JSON (no markdown):
+                const prompt = `Analyze this journal entry and suggest helpful habits or intentions. Respond with ONLY JSON (no markdown):
 Entry: "${entryText}"
-${isTest ? "TEST MODE: Always suggest something." : "Only suggest if clearly needed."}
+${isTest ? "TEST MODE: Always suggest at least one habit and one intention." : "Suggest habits or intentions that would help the user based on their entry. Be generous with suggestions."}
 
 Return: {"suggestions": [{"type": "habit", "label": "Do X daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Achieve Y", "data": {"timeframe": "weekly"}}]}
-Return empty suggestions array if nothing to suggest.`;
+Return at least one suggestion if the entry expresses any goal, desire, struggle, or aspiration.`;
 
                 const response = await callGemini(prompt);
                 result = parseJSON(response);
