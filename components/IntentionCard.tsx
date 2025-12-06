@@ -48,10 +48,12 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
       />
       <div className="flex-grow mx-4">
         <span className={`text-lg block ${intention.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+          {intention.emoji && <span className="mr-2">{intention.emoji}</span>}
           {intention.text}
         </span>
         <span className={`text-sm block mt-1 ${intention.status === 'completed' ? 'text-gray-500' : 'text-gray-300'}`}>
           {dueDateText}
+          {intention.category && <span className="ml-2 text-gray-400">• {intention.category}</span>}
         </span>
       </div>
 
