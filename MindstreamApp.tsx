@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import { useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { NavBar, View } from './components/NavBar';
@@ -32,6 +33,7 @@ import { InsightsView } from './components/InsightsView';
 import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ReflectionUnlockModal } from './components/ReflectionUnlockModal';
 import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewService';
 
 import { useAppLogic } from './hooks/useAppLogic';
@@ -90,6 +92,37 @@ export const MindstreamApp: React.FC = () => {
     // Count real entries (exclude temp entries)
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
     const insightsUnlocked = realEntryCount >= 5;
+
+    // Progressive unlock thresholds for reflections
+    const WEEKLY_UNLOCK = { days: 3, entries: 5 };
+    const MONTHLY_UNLOCK = { days: 14, entries: 10 };
+
+    // Track which reflection unlocks user has seen
+    const seenDailyUnlockKey = user ? `seenDailyUnlock_${user.id}` : 'seenDailyUnlock';
+    const seenWeeklyUnlockKey = user ? `seenWeeklyUnlock_${user.id}` : 'seenWeeklyUnlock';
+    const seenMonthlyUnlockKey = user ? `seenMonthlyUnlock_${user.id}` : 'seenMonthlyUnlock';
+    const [seenDailyUnlock, setSeenDailyUnlock] = useLocalStorage<boolean>(seenDailyUnlockKey, false);
+    const [seenWeeklyUnlock, setSeenWeeklyUnlock] = useLocalStorage<boolean>(seenWeeklyUnlockKey, false);
+    const [seenMonthlyUnlock, setSeenMonthlyUnlock] = useLocalStorage<boolean>(seenMonthlyUnlockKey, false);
+
+    // Modal state for reflection unlock
+    const [pendingUnlockType, setPendingUnlockType] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
+
+    // Calculate unlock status
+    const unlockStatus = useMemo(() => {
+        const now = new Date();
+        const createdAt = state.accountCreatedAt ? new Date(state.accountCreatedAt) : now;
+        const daysSinceInstall = differenceInDays(now, createdAt);
+
+        // Daily: Just need 1+ entries (always unlocked once they start journaling)
+        const dailyUnlocked = realEntryCount >= 1;
+        // Weekly: 3 days + 5 entries
+        const weeklyUnlocked = daysSinceInstall >= WEEKLY_UNLOCK.days && realEntryCount >= WEEKLY_UNLOCK.entries;
+        // Monthly: 14 days + 10 entries
+        const monthlyUnlocked = daysSinceInstall >= MONTHLY_UNLOCK.days && realEntryCount >= MONTHLY_UNLOCK.entries;
+
+        return { dailyUnlocked, weeklyUnlocked, monthlyUnlocked, daysSinceInstall };
+    }, [state.accountCreatedAt, realEntryCount]);
 
     // Legacy migration: users who already saw privacy screen skip onboarding
     useEffect(() => {
@@ -197,6 +230,60 @@ export const MindstreamApp: React.FC = () => {
                 .finally(() => setIsGeneratingStarters(false));
         }
     }, [view, state.messages, state.aiStatus]);
+
+    // Reflection unlock notifications - show modal when first unlocked
+    useEffect(() => {
+        if (!state.isDataLoaded || !user) return;
+
+        // Check daily unlock (first entry)
+        if (unlockStatus.dailyUnlocked && !seenDailyUnlock && pendingUnlockType === null) {
+            setPendingUnlockType('daily');
+            return;
+        }
+
+        // Check weekly unlock (3 days + 5 entries)
+        if (unlockStatus.weeklyUnlocked && !seenWeeklyUnlock && pendingUnlockType === null) {
+            setPendingUnlockType('weekly');
+            return;
+        }
+
+        // Check monthly unlock (14 days + 10 entries)
+        if (unlockStatus.monthlyUnlocked && !seenMonthlyUnlock && pendingUnlockType === null) {
+            setPendingUnlockType('monthly');
+            return;
+        }
+    }, [unlockStatus, seenDailyUnlock, seenWeeklyUnlock, seenMonthlyUnlock, state.isDataLoaded, user, pendingUnlockType]);
+
+    // Handle reflection unlock modal actions
+    const handleReflectionUnlockNavigate = () => {
+        if (!pendingUnlockType) return;
+
+        // Mark as seen
+        if (pendingUnlockType === 'daily') setSeenDailyUnlock(true);
+        if (pendingUnlockType === 'weekly') setSeenWeeklyUnlock(true);
+        if (pendingUnlockType === 'monthly') setSeenMonthlyUnlock(true);
+
+        // Navigate to insights view (which contains reflections)
+        setView('insights');
+
+        // Log event
+        if (user) {
+            db.logEvent(user.id, 'reflection_generated', { type: pendingUnlockType, action: 'navigated_from_unlock' });
+        }
+
+        setPendingUnlockType(null);
+    };
+
+    const handleReflectionUnlockDismiss = () => {
+        if (!pendingUnlockType) return;
+
+        // Mark as seen so it doesn't show again
+        if (pendingUnlockType === 'daily') setSeenDailyUnlock(true);
+        if (pendingUnlockType === 'weekly') setSeenWeeklyUnlock(true);
+        if (pendingUnlockType === 'monthly') setSeenMonthlyUnlock(true);
+
+        setPendingUnlockType(null);
+    };
 
     // Show Landing Screen for new users
     if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
@@ -535,6 +622,17 @@ export const MindstreamApp: React.FC = () => {
                         if (user) db.logEvent(user.id, 'insight_modal_action', { action: 'dismiss' });
                     }}
                 />
+
+                {/* Reflection Unlock Celebration Modal */}
+                <AnimatePresence>
+                    {pendingUnlockType && (
+                        <ReflectionUnlockModal
+                            type={pendingUnlockType}
+                            onNavigate={handleReflectionUnlockNavigate}
+                            onDismiss={handleReflectionUnlockDismiss}
+                        />
+                    )}
+                </AnimatePresence>
             </div>
         </ErrorBoundary>
     );
