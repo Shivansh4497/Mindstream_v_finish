@@ -12,6 +12,7 @@ interface HabitsViewProps {
     onToggle: (habitId: string, dateString?: string) => void;
     onEdit: (habit: Habit) => void;
     onDelete: (habitId: string) => void;
+    onAddHabit?: (name: string, emoji: string) => void;
     activeFrequency: HabitFrequency;
     onFrequencyChange: (frequency: HabitFrequency) => void;
 }
@@ -28,6 +29,7 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
     onToggle,
     onEdit,
     onDelete,
+    onAddHabit,
     activeFrequency,
     onFrequencyChange
 }) => {
@@ -104,7 +106,7 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
 
             <main className="flex-grow overflow-y-auto p-4">
                 {filteredHabits.length === 0 && (
-                    <EmptyHabitsState />
+                    <EmptyHabitsState onCreateHabit={onAddHabit} />
                 )}
 
                 {/* Habits List */}

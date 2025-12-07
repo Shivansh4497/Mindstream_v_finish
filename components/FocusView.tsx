@@ -86,6 +86,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
                                 onToggle={onToggleHabit}
                                 onEdit={onEditHabit}
                                 onDelete={onDeleteHabit}
+                                onAddHabit={onAddHabit}
                                 activeFrequency={activeHabitFrequency}
                                 onFrequencyChange={onHabitFrequencyChange}
                             />

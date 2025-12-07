@@ -203,6 +203,39 @@ function parseJSON<T>(text: string): T {
     return JSON.parse(clean);
 }
 
+// Normalize reflection response - Llama often returns nested objects instead of plain summary
+function normalizeReflection(parsed: any): { summary: string; suggestions: any[] } {
+    let summary = '';
+
+    // Try to extract summary from various possible fields
+    if (typeof parsed.summary === 'string') {
+        summary = parsed.summary;
+    } else if (typeof parsed.text === 'string') {
+        summary = parsed.text;
+    } else if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        // If summary is an object, try to concatenate its values
+        const fields = ['picture', 'emotional_arc', 'sentiment_arc', 'text', 'description', 'mood_to_action', 'win', 'improvement', 'goal_progress', 'pattern'];
+        const parts: string[] = [];
+        for (const field of fields) {
+            if (parsed[field] && typeof parsed[field] === 'string') {
+                parts.push(parsed[field]);
+            }
+        }
+        if (parts.length > 0) {
+            summary = parts.join(' ');
+        } else if (parsed.summary && typeof parsed.summary === 'object') {
+            // Nested summary object
+            summary = Object.values(parsed.summary).filter(v => typeof v === 'string').join(' ');
+        }
+    }
+
+    // Normalize suggestions
+    let suggestions = parsed.suggestions || [];
+    if (!Array.isArray(suggestions)) suggestions = [];
+
+    return { summary: summary || 'Unable to generate reflection', suggestions };
+}
+
 // =============================================================================
 // RATE LIMITING
 // =============================================================================
@@ -426,7 +459,7 @@ CRITICAL: Do NOT suggest something they already track as a habit! Check "Habits 
 Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}`;
 
                     const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    result = normalizeReflection(parseJSON(response));
                     break;
                 }
 
@@ -456,7 +489,7 @@ CRITICAL: Must be 15 words or fewer. One short sentence only.
 Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "Max 15 words action item", "type": "intention", "timeframe": "weekly"}]}`;
 
                     const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    result = normalizeReflection(parseJSON(response));
                     break;
                 }
 
@@ -490,7 +523,7 @@ Return exactly this format:
 {"summary": "This month you... (full paragraph here)...", "suggestions": [{"text": "Next month: specific action", "type": "intention", "timeframe": "monthly"}]}`;
 
                     const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    result = normalizeReflection(parseJSON(response));
                     break;
                 }
 
