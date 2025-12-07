@@ -114,8 +114,8 @@ export const MindstreamApp: React.FC = () => {
         const createdAt = state.accountCreatedAt ? new Date(state.accountCreatedAt) : now;
         const daysSinceInstall = differenceInDays(now, createdAt);
 
-        // Daily: Just need 1+ entries (always unlocked once they start journaling)
-        const dailyUnlocked = realEntryCount >= 1;
+        // Daily: 5 entries (same as Insights tab unlock)
+        const dailyUnlocked = realEntryCount >= 5;
         // Weekly: 3 days + 5 entries
         const weeklyUnlocked = daysSinceInstall >= WEEKLY_UNLOCK.days && realEntryCount >= WEEKLY_UNLOCK.entries;
         // Monthly: 14 days + 10 entries
