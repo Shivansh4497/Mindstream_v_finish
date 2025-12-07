@@ -133,7 +133,7 @@ export const analyzeHabit = async (habitName: string): Promise<{ emoji: string, 
             habitName
         });
     } catch (e) {
-        return { emoji: "⚡️", category: "System" };
+        return { emoji: "✨", category: "Growth" };
     }
 };
 
