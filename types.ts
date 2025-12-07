@@ -4,6 +4,7 @@ export interface Profile {
   id: string;
   email: string;
   avatar_url?: string;
+  created_at?: string;
 }
 
 export type GranularSentiment = 'Joyful' | 'Grateful' | 'Proud' | 'Hopeful' | 'Content' |

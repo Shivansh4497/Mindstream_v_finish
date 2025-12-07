@@ -19,6 +19,29 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
     return data;
 };
 
+// Cache for account creation timestamps to avoid repeated DB calls
+const accountCreatedAtCache: Map<string, string> = new Map();
+
+// Get account creation timestamp (used to filter out old data from before account recreation)
+export const getAccountCreatedAt = async (userId: string): Promise<string | null> => {
+    // Check cache first
+    if (accountCreatedAtCache.has(userId)) {
+        return accountCreatedAtCache.get(userId)!;
+    }
+
+    const profile = await getProfile(userId);
+    if (profile?.created_at) {
+        accountCreatedAtCache.set(userId, profile.created_at);
+        return profile.created_at;
+    }
+    return null;
+};
+
+// Clear cache on logout/account change
+export const clearAccountCreatedAtCache = (userId: string) => {
+    accountCreatedAtCache.delete(userId);
+};
+
 export const createProfile = async (user: User): Promise<Profile | null> => {
     if (!supabase) throw new Error("Supabase client not initialized");
     // Use upsert to handle account recreation with same email (prevents 409 conflict)
@@ -65,10 +88,20 @@ export const getEntries = async (userId: string, page: number = 0, pageSize: num
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabase
+    // Get account creation timestamp to filter out old data
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    let query = supabase
         .from('entries')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+
+    // Filter entries created after account recreation
+    if (accountCreatedAt) {
+        query = query.gte('timestamp', accountCreatedAt);
+    }
+
+    const { data, error } = await query
         .order('timestamp', { ascending: false })
         .range(from, to);
 
@@ -175,11 +208,21 @@ export const addFirstIntention = async (userId: string): Promise<Intention | nul
 // Reflection Functions
 export const getReflections = async (userId: string): Promise<Reflection[]> => {
     if (!supabase) return [];
-    const { data, error } = await supabase
+
+    // Get account creation timestamp to filter out old data
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    let query = supabase
         .from('reflections')
         .select('*')
-        .eq('user_id', userId)
-        .order('timestamp', { ascending: false });
+        .eq('user_id', userId);
+
+    // Filter reflections created after account recreation
+    if (accountCreatedAt) {
+        query = query.gte('timestamp', accountCreatedAt);
+    }
+
+    const { data, error } = await query.order('timestamp', { ascending: false });
 
     if (error) {
         console.error('Error fetching reflections:', error);
@@ -254,11 +297,21 @@ export const addReflection = async (userId: string, reflectionData: Omit<Reflect
 // Intention Functions
 export const getIntentions = async (userId: string): Promise<Intention[]> => {
     if (!supabase) return [];
-    const { data, error } = await supabase
+
+    // Get account creation timestamp to filter out old data
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    let query = supabase
         .from('intentions')
         .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('user_id', userId);
+
+    // Filter intentions created after account recreation
+    if (accountCreatedAt) {
+        query = query.gte('created_at', accountCreatedAt);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) {
         console.error('Error fetching intentions:', error);
         return [];
@@ -386,12 +439,21 @@ export const deleteIntention = async (id: string): Promise<boolean> => {
 export const getHabits = async (userId: string): Promise<Habit[]> => {
     if (!supabase) return [];
 
+    // Get account creation timestamp to filter out old data
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
     // 1. Fetch Habits
-    const { data: habitsData, error } = await supabase
+    let query = supabase
         .from('habits')
         .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
+        .eq('user_id', userId);
+
+    // Filter habits created after account recreation
+    if (accountCreatedAt) {
+        query = query.gte('created_at', accountCreatedAt);
+    }
+
+    const { data: habitsData, error } = await query.order('created_at', { ascending: true });
 
     if (error) return [];
 
