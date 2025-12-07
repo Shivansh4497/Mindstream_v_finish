@@ -10,19 +10,16 @@ interface EditIntentionModalProps {
     onCancel: () => void;
 }
 
-const CATEGORIES = ['Health', 'Growth', 'Career', 'Finance', 'Connection', 'System'] as const;
+// Single unified category list matching the dropdown in the screenshot
+const CATEGORIES = ['Career', 'Health', 'Personal', 'Growth', 'Finance', 'Relationships', 'Creativity', 'Learning', 'Productivity', 'Mindfulness'] as const;
 
 // Common emojis for intentions
 const COMMON_EMOJIS = ['🎯', '🚀', '💪', '📚', '💼', '💰', '❤️', '🌟', '✨', '🔥', '⏰', '📝', '🎨', '🏃', '🧘', '💡'];
 
-// Predefined tags that users can select from
-const AVAILABLE_TAGS = ['career', 'health', 'personal', 'growth', 'finance', 'relationships', 'creativity', 'learning', 'productivity', 'mindfulness'] as const;
-
 export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intention, onSave, onCancel }) => {
     const [text, setText] = useState(intention.text);
     const [emoji, setEmoji] = useState(intention.emoji || '🎯');
-    const [category, setCategory] = useState<typeof CATEGORIES[number]>(intention.category || 'Growth');
-    const [selectedTag, setSelectedTag] = useState<string>(intention.tags?.[0] || '');
+    const [category, setCategory] = useState<string>(intention.category || 'Growth');
     const [showETASelector, setShowETASelector] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -42,15 +39,10 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     );
     const [isSaving, setIsSaving] = useState(false);
 
-    // Compare for change detection
-    const originalTag = intention.tags?.[0] || '';
-    const tagChanged = selectedTag !== originalTag;
-
     const hasChanged =
         text !== intention.text ||
         emoji !== intention.emoji ||
         category !== intention.category ||
-        tagChanged ||
         selectedPreset !== getInitialPreset() ||
         (selectedDueDate?.toISOString() !== intention.due_date && !(selectedDueDate === null && !intention.due_date));
 
@@ -61,8 +53,7 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
         const updates: Partial<Intention> = {
             text: text.trim(),
             emoji,
-            category,
-            tags: selectedTag ? [selectedTag] : [],
+            category: category as any,
             due_date: selectedDueDate?.toISOString() || null,
             is_life_goal: selectedPreset === 'life',
         };
@@ -136,10 +127,10 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
                         </AnimatePresence>
                     </div>
 
-                    {/* Category Selector */}
+                    {/* Category Selector - Single dropdown with all options */}
                     <select
                         value={category}
-                        onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])}
+                        onChange={(e) => setCategory(e.target.value)}
                         className="flex-1 bg-dark-surface-light rounded-lg p-3 text-white border border-white/10 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow appearance-none cursor-pointer"
                     >
                         {CATEGORIES.map((cat) => (
@@ -160,23 +151,6 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
                         className="w-full bg-dark-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow resize-none border border-white/10"
                         placeholder="What do you want to achieve?"
                     />
-                </div>
-
-                {/* Tag Selector (single dropdown) */}
-                <div className="mb-4">
-                    <label className="text-sm text-gray-400 mb-1 block">Tag</label>
-                    <select
-                        value={selectedTag}
-                        onChange={(e) => setSelectedTag(e.target.value)}
-                        className="w-full bg-dark-surface-light rounded-lg p-3 text-white border border-white/10 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow appearance-none cursor-pointer"
-                    >
-                        <option value="" className="bg-dark-surface">No tag</option>
-                        {AVAILABLE_TAGS.map((tag) => (
-                            <option key={tag} value={tag} className="bg-dark-surface capitalize">
-                                {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                            </option>
-                        ))}
-                    </select>
                 </div>
 
                 {/* Due Date Section */}
