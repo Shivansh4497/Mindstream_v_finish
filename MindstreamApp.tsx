@@ -448,7 +448,7 @@ export const MindstreamApp: React.FC = () => {
                 {entryToDelete && <DeleteConfirmationModal onConfirm={() => { actions.handleDeleteEntry(entryToDelete); setEntryToDelete(null); }} onCancel={() => setEntryToDelete(null)} />}
                 {entryToEdit && <EditEntryModal entry={entryToEdit} onSave={async (txt) => { await actions.handleEditEntry(entryToEdit, txt); setEntryToEdit(null); }} onCancel={() => setEntryToEdit(null)} />}
                 {habitToEdit && <EditHabitModal habit={habitToEdit} onSave={async (name, emoji, category) => { await actions.handleEditHabit(habitToEdit.id, name, emoji, category); setHabitToEdit(null); }} onCancel={() => setHabitToEdit(null)} />}
-                {intentionToEdit && <EditIntentionModal intention={intentionToEdit} onSave={async (text) => { await db.updateIntention(intentionToEdit.id, { text }); window.location.reload(); }} onCancel={() => setIntentionToEdit(null)} />}
+                {intentionToEdit && <EditIntentionModal intention={intentionToEdit} onSave={async (updates) => { await db.updateIntention(intentionToEdit.id, updates); actions.setIntentions(state.intentions.map(i => i.id === intentionToEdit.id ? { ...i, ...updates } : i)); setIntentionToEdit(null); }} onCancel={() => setIntentionToEdit(null)} />}
                 {showThematicModal && selectedTag && (
                     <ThematicModal
                         tag={selectedTag}
