@@ -70,6 +70,9 @@ export const MindstreamApp: React.FC = () => {
     const [yearlyReviewData, setYearlyReviewData] = useState<YearlyReviewData | null>(null);
     const [isGeneratingYearly, setIsGeneratingYearly] = useState(false);
 
+    // Loading timeout state - MUST be declared before any early returns
+    const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
     // Onboarding State
     // 0 = not started (show Landing), 1 = quick start (go to app), 5 = guided complete
     const onboardingKey = user ? `onboardingStep_${user.id}` : 'onboardingStep';
@@ -94,6 +97,14 @@ export const MindstreamApp: React.FC = () => {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
         }
     }, [legacyPrivacy, onboardingStep]);
+
+    // Loading timeout - shows retry button if loading takes too long
+    useEffect(() => {
+        if (!state.isDataLoaded) {
+            const timeout = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
+            return () => clearTimeout(timeout);
+        }
+    }, [state.isDataLoaded]);
 
     // Progressive disclosure: show toast when Insights tab unlocks
     useEffect(() => {
@@ -220,16 +231,6 @@ export const MindstreamApp: React.FC = () => {
             }
         }} />;
     }
-
-    // Loading timeout state
-    const [loadingTimedOut, setLoadingTimedOut] = useState(false);
-
-    useEffect(() => {
-        if (!state.isDataLoaded) {
-            const timeout = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
-            return () => clearTimeout(timeout);
-        }
-    }, [state.isDataLoaded]);
 
     if (!state.isDataLoaded) {
         return (
