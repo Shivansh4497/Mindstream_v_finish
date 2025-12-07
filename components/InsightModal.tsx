@@ -45,7 +45,7 @@ export const InsightModal: React.FC<InsightModalProps> = ({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-lg mx-auto bg-mindstream-bg-surface border border-white/10 rounded-2xl p-6 z-50 shadow-2xl"
+                        className="fixed inset-x-4 bottom-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 max-w-lg mx-auto bg-mindstream-bg-surface border border-white/10 rounded-2xl p-6 z-50 shadow-2xl max-h-[85vh] overflow-y-auto"
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 mb-4">
