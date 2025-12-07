@@ -12,8 +12,8 @@ const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
 // Model configuration with fallback
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-2.0-flash';
-const BACKUP_MODEL = 'gemini-1.5-flash'; // Stable fallback (2.5 doesn't exist yet)
+const PRIMARY_MODEL = 'gemini-2.0-flash-exp'; // Experimental version via API
+const BACKUP_MODEL = 'gemini-1.5-flash'; // Stable fallback
 
 interface GeminiRequest {
     action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
