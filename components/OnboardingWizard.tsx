@@ -579,15 +579,29 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
 
       {/* Step 8: Awe (Typewriter Reveal) */}
       {step === 'awe' && insight && (
-        <div className="max-w-md w-full bg-dark-surface/30 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl animate-fade-in-up relative z-10">
-          <div className="flex items-center gap-3 mb-6">
+        <div className="max-w-md w-full bg-dark-surface/30 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl animate-fade-in-up relative z-10 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center gap-3 mb-4">
             <SparklesIcon className="w-6 h-6 text-brand-teal animate-pulse" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-brand-teal">Instant Insight</h3>
           </div>
 
-          <p className="text-xl md:text-2xl text-white font-display leading-relaxed mb-8 min-h-[100px]">
+          <p className="text-lg md:text-xl text-white font-display leading-relaxed mb-4">
             "{displayedInsight}"<span className="animate-pulse text-brand-teal">|</span>
           </p>
+
+          {/* Why This Insight - Evidence for trust */}
+          <p className="text-xs text-gray-500 italic mb-4 flex items-center gap-1">
+            <span>💡</span>
+            <span>Based on what you just shared</span>
+          </p>
+
+          {/* Follow-up Question */}
+          {insight.followUpQuestion && displayedInsight.length === insight.insight.length && (
+            <div className="bg-mindstream-bg-elevated/50 rounded-xl p-4 mb-6 border-l-4 border-brand-teal">
+              <p className="text-sm text-gray-400 mb-1">Something to reflect on:</p>
+              <p className="text-white font-medium text-sm">{insight.followUpQuestion}</p>
+            </div>
+          )}
 
           {displayedInsight.length === insight.insight.length && (
             <div className="flex flex-col gap-3 animate-fade-in">
