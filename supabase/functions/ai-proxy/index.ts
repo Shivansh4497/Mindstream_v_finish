@@ -10,11 +10,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-// Model configuration with fallback chain
+// Model configuration with fallback chain - using correct v1beta model names
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-2.0-flash-exp'; // Experimental version via API
-const BACKUP_MODEL = 'gemini-1.5-flash-latest'; // Stable fallback with -latest suffix
-const FALLBACK_MODEL = 'gemini-pro'; // Last resort - always available
+const PRIMARY_MODEL = 'gemini-1.5-flash-002'; // Fast, stable (Sept 2024)
+const BACKUP_MODEL = 'gemini-1.5-pro-002'; // More capable, stable fallback
+const FALLBACK_MODEL = 'gemini-1.5-flash-8b-001'; // Smaller, always available
 
 // Startup logging - check if secrets are loaded
 console.log('[AI Proxy] Initializing...');
