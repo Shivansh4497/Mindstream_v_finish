@@ -307,7 +307,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       try {
         const generatedSuggestions = await generateOnboardingSuggestions(entryText);
         setSuggestions(generatedSuggestions);
-        setStep('suggestions');
+
+        // Skip suggestions step if both arrays are empty
+        if (generatedSuggestions.habits.length === 0 && generatedSuggestions.intentions.length === 0) {
+          setStep('awe');
+        } else {
+          setStep('suggestions');
+        }
       } catch (error) {
         console.error('Error generating suggestions:', error);
         setStep('awe'); // Skip to end if error
