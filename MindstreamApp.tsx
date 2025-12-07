@@ -203,15 +203,18 @@ export const MindstreamApp: React.FC = () => {
     // Show Guided Onboarding Wizard (steps 2-4 go through wizard)
     if (onboardingStep >= 2 && onboardingStep < ONBOARDING_GUIDED_COMPLETE && user) {
         return <OnboardingWizard userId={user.id} onComplete={(dest, context, q) => {
+            console.log('[Onboarding] onComplete called:', { dest, context: context?.slice(0, 50), question: q?.slice(0, 50) });
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
             db.logEvent(user.id, 'onboarding_completed', { path: 'guided' });
 
             if (dest === 'chat' && context && q) {
+                console.log('[Onboarding] Going to Chat with context');
                 // Go to Chat with context seeded
                 setView('chat');
                 actions.handleSendMessage(context);
                 actions.setMessages(prev => [...prev, { sender: 'ai', text: q }]);
             } else {
+                console.log('[Onboarding] Falling through to Stream. dest:', dest, 'context:', !!context, 'q:', !!q);
                 // Default to Stream for all other cases (including 'stream' destination or missing context)
                 setView('stream');
             }
