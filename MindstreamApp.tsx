@@ -511,7 +511,7 @@ export const MindstreamApp: React.FC = () => {
                     onExploreChat={() => {
                         const isFirstAction = !hasSeenFirstInsight;
                         setHasSeenFirstInsight(true);
-                        const entryText = state.pendingInsight?.entryText || '';
+                        const insight = state.pendingInsight?.insight || '';
                         const followUp = state.pendingInsight?.followUpQuestion || '';
                         actions.setPendingInsight(null);
                         setView('chat');
@@ -519,12 +519,13 @@ export const MindstreamApp: React.FC = () => {
                             db.logEvent(user.id, 'insight_modal_action', { action: 'chat' });
                             if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'chat' });
                         }
-                        // Seed the chat with context
-                        if (entryText) {
-                            actions.handleSendMessage(entryText);
-                            setTimeout(() => {
-                                actions.setMessages(prev => [...prev, { sender: 'ai', text: followUp }]);
-                            }, 500);
+                        // Seed chat with the insight context and let user explore via follow-up
+                        if (insight && followUp) {
+                            // First add the insight as AI message, then the follow-up as user's starting question
+                            actions.setMessages(prev => [
+                                ...prev,
+                                { sender: 'ai', text: `"${insight}"\n\n${followUp}` }
+                            ]);
                         }
                     }}
                     onDismiss={() => {
