@@ -180,7 +180,7 @@ export const MindstreamApp: React.FC = () => {
     useEffect(() => {
         if (view === 'chat' && state.messages.length === 1 && chatStarters.length === 0 && state.aiStatus === 'ready') {
             setIsGeneratingStarters(true);
-            reflections.generateChatStarters(state.entries, state.intentions)
+            reflections.generateChatStarters(state.entries)
                 .then(res => setChatStarters(res.starters))
                 .catch(console.error)
                 .finally(() => setIsGeneratingStarters(false));
@@ -373,7 +373,7 @@ export const MindstreamApp: React.FC = () => {
                                         actions.handleSendMessage(`I'd like to explore this reflection: "${summary}"`);
                                     }}
                                     isGenerating={state.isGeneratingReflection}
-                                    onAddSuggestion={(s) => actions.handleAddIntention(s.text, s.timeframe || 'daily')}
+                                    onAddSuggestion={(s) => actions.handleAddIntention(s.text, null, false)}
                                     aiStatus={state.aiStatus}
                                     onDebug={() => reflections.getRawReflectionForDebug().then(res => actions.setToast({ message: "Debug check console", id: 1 }))}
                                     debugOutput={null}
