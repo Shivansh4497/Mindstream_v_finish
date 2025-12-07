@@ -6,30 +6,79 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Environment variables
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
+const groqKey = Deno.env.get('GROQ_API_KEY');
+const geminiKey = Deno.env.get('GEMINI_API_KEY');
 
-// Model configuration - verified from ListModels API
+// =============================================================================
+// PROVIDER CONFIGURATION
+// =============================================================================
+
+// Groq models (primary - most capacity)
+const GROQ_API_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL_PRIMARY = 'llama-3.1-70b-versatile';
+const GROQ_MODEL_BACKUP = 'llama-3.1-8b-instant';
+
+// Gemini models (fallback)
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-2.0-flash'; // Fast, available
-const BACKUP_MODEL = 'gemini-2.0-flash-lite'; // Lighter backup
-const FALLBACK_MODEL = 'gemini-2.5-flash'; // Newest fallback
+const GEMINI_MODEL_PRIMARY = 'gemini-2.0-flash';
+const GEMINI_MODEL_BACKUP = 'gemini-2.5-flash-lite';
 
 // Startup logging
-console.log('[AI Proxy] Initializing...');
+console.log('[AI Proxy] Initializing multi-provider system...');
+console.log('[AI Proxy] GROQ_API_KEY present:', !!groqKey);
 console.log('[AI Proxy] GEMINI_API_KEY present:', !!geminiKey);
-console.log('[AI Proxy] GEMINI_API_KEY length:', geminiKey?.length || 0);
-console.log('[AI Proxy] Models:', PRIMARY_MODEL, '->', BACKUP_MODEL, '->', FALLBACK_MODEL);
+console.log('[AI Proxy] Provider chain: Groq 70B -> Groq 8B -> Gemini Flash -> Gemini Lite -> Cached');
 
-interface GeminiRequest {
-    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
+interface AIRequest {
+    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection' | 'list-models';
     payload: Record<string, any>;
 }
 
+// =============================================================================
+// PROVIDER CALL FUNCTIONS
+// =============================================================================
+
+async function callGroqWithModel(model: string, prompt: string): Promise<string> {
+    if (!groqKey) throw new Error('Groq API key not configured');
+
+    console.log(`[AI Proxy] Calling Groq ${model}, prompt length: ${prompt.length}`);
+
+    const response = await fetch(GROQ_API_BASE, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 2048,
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[AI Proxy] Groq ${model} error ${response.status}:`, errorText);
+        throw new Error(`Groq API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!result.choices?.[0]?.message?.content) {
+        throw new Error('No response from Groq');
+    }
+
+    return result.choices[0].message.content;
+}
+
 async function callGeminiWithModel(model: string, prompt: string): Promise<string> {
+    if (!geminiKey) throw new Error('Gemini API key not configured');
+
     const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${geminiKey}`;
-    console.log(`[AI Proxy] Calling ${model}, prompt length: ${prompt.length}`);
+    console.log(`[AI Proxy] Calling Gemini ${model}, prompt length: ${prompt.length}`);
 
     const response = await fetch(url, {
         method: 'POST',
@@ -45,32 +94,105 @@ async function callGeminiWithModel(model: string, prompt: string): Promise<strin
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[AI Proxy] ${model} error ${response.status}:`, errorText);
+        console.error(`[AI Proxy] Gemini ${model} error ${response.status}:`, errorText);
         throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const result = await response.json();
     if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        throw new Error('No response from AI');
+        throw new Error('No response from Gemini');
     }
 
     return result.candidates[0].content.parts[0].text;
 }
 
-async function callGemini(prompt: string): Promise<string> {
-    // Triple fallback chain
-    try {
-        return await callGeminiWithModel(PRIMARY_MODEL, prompt);
-    } catch (error1: any) {
-        console.warn(`[AI Proxy] Primary model (${PRIMARY_MODEL}) failed: ${error1.message}`);
+// =============================================================================
+// CACHED FALLBACK RESPONSES (Layer 8 - Never fails)
+// =============================================================================
+
+interface CachedResponses {
+    [key: string]: any;
+}
+
+const CACHED_FALLBACKS: CachedResponses = {
+    'process-entry': {
+        title: 'Entry',
+        tags: [],
+        primary_sentiment: 'Reflective',
+        emoji: '📝'
+    },
+    'suggestions': {
+        suggestions: []
+    },
+    'instant-insight': {
+        insight: "Every moment of self-reflection is a step toward understanding yourself better. Take a breath and appreciate that you're here, thinking about what matters to you.",
+        followUpQuestion: "What's one small thing you could do right now to feel a bit better?",
+        confidence: 0.5
+    },
+    'analyze-habit': {
+        emoji: '✨',
+        category: 'Growth'
+    },
+    'analyze-intention': {
+        emoji: '🎯',
+        category: 'Growth'
+    },
+    'extract-keywords': {
+        keywords: []
+    },
+    'chat': {
+        response: "I'm taking a brief pause to collect my thoughts. Your reflections are valuable—please try again in just a moment, and I'll be here to help."
+    },
+    'daily-reflection': {
+        summary: "Today brought its own unique lessons. Take a moment to acknowledge your efforts and appreciate how far you've come. Tomorrow offers a fresh start.",
+        suggestions: []
+    },
+    'weekly-reflection': {
+        summary: "This week held its own story. Whether filled with progress or challenges, each day contributed to your growth. Look ahead with optimism.",
+        suggestions: []
+    },
+    'monthly-reflection': {
+        summary: "Another month has passed in your journey. The experiences, both highs and lows, have shaped who you are becoming. Trust the process and keep moving forward.",
+        suggestions: []
+    }
+};
+
+function getCachedResponse(action: string): any {
+    console.log(`[AI Proxy] Using cached fallback for: ${action}`);
+    return CACHED_FALLBACKS[action] || { error: 'Unknown action' };
+}
+
+// =============================================================================
+// MULTI-PROVIDER CALL WITH FALLBACK CHAIN
+// =============================================================================
+
+async function callAI(prompt: string, action: string): Promise<string> {
+    const providers = [
+        { name: 'Groq 70B', fn: () => callGroqWithModel(GROQ_MODEL_PRIMARY, prompt), available: !!groqKey },
+        { name: 'Groq 8B', fn: () => callGroqWithModel(GROQ_MODEL_BACKUP, prompt), available: !!groqKey },
+        { name: 'Gemini Flash', fn: () => callGeminiWithModel(GEMINI_MODEL_PRIMARY, prompt), available: !!geminiKey },
+        { name: 'Gemini Lite', fn: () => callGeminiWithModel(GEMINI_MODEL_BACKUP, prompt), available: !!geminiKey },
+    ];
+
+    for (const provider of providers) {
+        if (!provider.available) {
+            console.log(`[AI Proxy] Skipping ${provider.name} (not configured)`);
+            continue;
+        }
+
         try {
-            return await callGeminiWithModel(BACKUP_MODEL, prompt);
-        } catch (error2: any) {
-            console.warn(`[AI Proxy] Backup model (${BACKUP_MODEL}) failed: ${error2.message}`);
-            console.warn(`[AI Proxy] Trying last resort model: ${FALLBACK_MODEL}`);
-            return await callGeminiWithModel(FALLBACK_MODEL, prompt);
+            const result = await provider.fn();
+            console.log(`[AI Proxy] ✓ ${provider.name} succeeded`);
+            return result;
+        } catch (error: any) {
+            console.warn(`[AI Proxy] ✗ ${provider.name} failed: ${error.message}`);
+            // Continue to next provider
         }
     }
+
+    // All providers failed - this should never happen, but return cached as JSON string
+    console.error('[AI Proxy] All providers failed! Using cached response.');
+    return JSON.stringify(getCachedResponse(action));
 }
 
 function parseJSON<T>(text: string): T {
@@ -81,9 +203,12 @@ function parseJSON<T>(text: string): T {
     return JSON.parse(clean);
 }
 
-// Rate limiting
+// =============================================================================
+// RATE LIMITING
+// =============================================================================
+
 const userCallCounts: Map<string, { count: number; resetAt: number }> = new Map();
-const RATE_LIMIT = 100;
+const RATE_LIMIT = 200; // Increased since we have more capacity now
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 
 function checkRateLimit(userId: string): boolean {
@@ -97,6 +222,10 @@ function checkRateLimit(userId: string): boolean {
     userLimit.count++;
     return true;
 }
+
+// =============================================================================
+// MAIN REQUEST HANDLER
+// =============================================================================
 
 serve(async (req) => {
     // Handle CORS
@@ -145,26 +274,27 @@ serve(async (req) => {
         }
 
         // Parse request
-        const { action, payload }: GeminiRequest = await req.json();
+        const { action, payload }: AIRequest = await req.json();
         console.log(`[AI Proxy] Action: ${action}`);
 
         let result: any;
 
-        switch (action) {
-            // Debug: List available models
-            case 'list-models': {
-                const listUrl = `${GEMINI_API_BASE.replace('/models', '')}?key=${geminiKey}`;
-                console.log('[AI Proxy] Calling ListModels API...');
-                const response = await fetch(listUrl);
-                const data = await response.json();
-                console.log('[AI Proxy] Available models:', JSON.stringify(data.models?.map((m: any) => m.name) || data.error, null, 2));
-                result = { models: data.models?.map((m: any) => ({ name: m.name, supportedGenerationMethods: m.supportedGenerationMethods })) || [], error: data.error };
-                break;
-            }
+        try {
+            switch (action) {
+                case 'list-models': {
+                    result = {
+                        providers: {
+                            groq: { available: !!groqKey, models: [GROQ_MODEL_PRIMARY, GROQ_MODEL_BACKUP] },
+                            gemini: { available: !!geminiKey, models: [GEMINI_MODEL_PRIMARY, GEMINI_MODEL_BACKUP] },
+                            cached: { available: true, models: ['fallback-templates'] }
+                        }
+                    };
+                    break;
+                }
 
-            case 'process-entry': {
-                const { entryText } = payload;
-                const prompt = `Analyze this journal entry and respond with ONLY a JSON object (no markdown, no code blocks):
+                case 'process-entry': {
+                    const { entryText } = payload;
+                    const prompt = `Analyze this journal entry and respond with ONLY a JSON object (no markdown, no code blocks):
 Entry: "${entryText}"
 
 Return JSON in this exact format:
@@ -172,14 +302,14 @@ Return JSON in this exact format:
 
 Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, Frustrated, Sad, Overwhelmed, Confused, Reflective, Inquisitive, Observational`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'suggestions': {
-                const { entryText, isTest } = payload;
-                const prompt = `You are a wise, selective coach. Analyze this journal entry. Respond with ONLY JSON.
+                case 'suggestions': {
+                    const { entryText, isTest } = payload;
+                    const prompt = `You are a wise, selective coach. Analyze this journal entry. Respond with ONLY JSON.
 
 Entry: "${entryText}"
 
@@ -194,14 +324,14 @@ ${isTest ? "- TEST MODE: Override rules, always return one habit and one intenti
 Return: {"suggestions": [{"type": "habit", "label": "Meditate 5 mins daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Run first 5K by March", "data": {"timeframe": "weekly"}}]}
 If entry doesn't warrant suggestions, return: {"suggestions": []}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'instant-insight': {
-                const { text, sentiment, lifeArea, trigger } = payload;
-                const prompt = `You are a wise coach. Respond with ONLY JSON (no markdown):
+                case 'instant-insight': {
+                    const { text, sentiment, lifeArea, trigger } = payload;
+                    const prompt = `You are a wise coach. Respond with ONLY JSON (no markdown):
 User feeling: ${sentiment}
 Life area: ${lifeArea}
 Trigger: ${trigger}
@@ -210,67 +340,67 @@ Entry: "${text}"
 Provide an empathetic insight and follow-up question. Rate confidence 0.0-1.0 based on entry quality.
 Return: {"insight": "Your insight...", "followUpQuestion": "Your question?", "confidence": 0.8}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                result.confidence = typeof result.confidence === 'number' ? result.confidence : 0.5;
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    result.confidence = typeof result.confidence === 'number' ? result.confidence : 0.5;
+                    break;
+                }
 
-            case 'analyze-habit': {
-                const { habitName } = payload;
-                const prompt = `Classify this habit and assign an emoji. Respond with ONLY JSON:
+                case 'analyze-habit': {
+                    const { habitName } = payload;
+                    const prompt = `Classify this habit and assign an emoji. Respond with ONLY JSON:
 Habit: "${habitName}"
 Categories: Health, Growth, Career, Finance, Connection, System
 Return: {"emoji": "🏃", "category": "Health"}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'analyze-intention': {
-                const { intentionText } = payload;
-                const prompt = `Classify this intention/goal and assign an emoji. Respond with ONLY JSON:
+                case 'analyze-intention': {
+                    const { intentionText } = payload;
+                    const prompt = `Classify this intention/goal and assign an emoji. Respond with ONLY JSON:
 Intention: "${intentionText}"
 Categories: Health, Growth, Career, Finance, Connection, System
 Return: {"emoji": "🎯", "category": "Growth"}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'extract-keywords': {
-                const { query } = payload;
-                const prompt = `Extract 2-4 search keywords from: "${query}"
+                case 'extract-keywords': {
+                    const { query } = payload;
+                    const prompt = `Extract 2-4 search keywords from: "${query}"
 Respond with ONLY JSON: {"keywords": ["term1", "term2"]}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
-
-            case 'chat': {
-                const { history, userPrompt, systemInstruction } = payload;
-
-                let context = systemInstruction ? `${systemInstruction}\n\n` : '';
-                if (history && Array.isArray(history)) {
-                    for (const msg of history) {
-                        const role = msg.role === 'user' ? 'User' : 'Assistant';
-                        const text = msg.parts?.[0]?.text || '';
-                        context += `${role}: ${text}\n`;
-                    }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
                 }
-                context += `User: ${userPrompt}\n\nRespond as a helpful, empathetic assistant:`;
 
-                const response = await callGemini(context);
-                result = { response };
-                break;
-            }
+                case 'chat': {
+                    const { history, userPrompt, systemInstruction } = payload;
 
-            case 'daily-reflection': {
-                const { entries, intentions, habits } = payload;
-                const prompt = `You are the user's thoughtful life coach. Generate a Daily Reflection. Respond with ONLY valid JSON.
+                    let context = systemInstruction ? `${systemInstruction}\n\n` : '';
+                    if (history && Array.isArray(history)) {
+                        for (const msg of history) {
+                            const role = msg.role === 'user' ? 'User' : 'Assistant';
+                            const text = msg.parts?.[0]?.text || '';
+                            context += `${role}: ${text}\n`;
+                        }
+                    }
+                    context += `User: ${userPrompt}\n\nRespond as a helpful, empathetic assistant:`;
+
+                    const response = await callAI(context, action);
+                    result = { response };
+                    break;
+                }
+
+                case 'daily-reflection': {
+                    const { entries, intentions, habits } = payload;
+                    const prompt = `You are the user's thoughtful life coach. Generate a Daily Reflection. Respond with ONLY valid JSON.
 
 TODAY'S DATA:
 Entries: ${entries || 'No entries today'}
@@ -295,14 +425,14 @@ CRITICAL: Do NOT suggest something they already track as a habit! Check "Habits 
 
 Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'weekly-reflection': {
-                const { entries, intentions, habits } = payload;
-                const prompt = `You are the user's strategic life coach. Generate a Weekly Reflection. Respond with ONLY valid JSON.
+                case 'weekly-reflection': {
+                    const { entries, intentions, habits } = payload;
+                    const prompt = `You are the user's strategic life coach. Generate a Weekly Reflection. Respond with ONLY valid JSON.
 
 THIS WEEK'S DATA:
 Entries: ${entries || 'No entries this week'}
@@ -325,14 +455,14 @@ CRITICAL: Must be 15 words or fewer. One short sentence only.
 
 Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "Max 15 words action item", "type": "intention", "timeframe": "weekly"}]}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            case 'monthly-reflection': {
-                const { entries, intentions } = payload;
-                const prompt = `You are the user's wise life coach. Generate a Monthly Reflection. Respond with ONLY valid JSON.
+                case 'monthly-reflection': {
+                    const { entries, intentions } = payload;
+                    const prompt = `You are the user's wise life coach. Generate a Monthly Reflection. Respond with ONLY valid JSON.
 
 THIS MONTH'S DATA:
 Entries: ${entries || 'No entries this month'}
@@ -359,16 +489,21 @@ YOUR TASK - SUGGESTIONS (max 1):
 Return exactly this format:
 {"summary": "This month you... (full paragraph here)...", "suggestions": [{"text": "Next month: specific action", "type": "intention", "timeframe": "monthly"}]}`;
 
-                const response = await callGemini(prompt);
-                result = parseJSON(response);
-                break;
-            }
+                    const response = await callAI(prompt, action);
+                    result = parseJSON(response);
+                    break;
+                }
 
-            default:
-                return new Response(JSON.stringify({ success: false, error: `Unknown action: ${action}` }), {
-                    status: 400,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
+                default:
+                    return new Response(JSON.stringify({ success: false, error: `Unknown action: ${action}` }), {
+                        status: 400,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+            }
+        } catch (parseError: any) {
+            // JSON parsing failed even after all providers - use cached fallback
+            console.error(`[AI Proxy] Parse error for ${action}:`, parseError.message);
+            result = getCachedResponse(action);
         }
 
         console.log(`[AI Proxy] Success for action: ${action}`);
@@ -378,10 +513,22 @@ Return exactly this format:
         });
 
     } catch (error: any) {
-        console.error('[AI Proxy] Error:', error.message);
-        return new Response(JSON.stringify({ success: false, error: error.message || 'Internal error' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        console.error('[AI Proxy] Critical error:', error.message);
+
+        // Even on critical error, try to return something useful
+        // Parse action from request if possible
+        try {
+            const { action } = await req.clone().json();
+            const fallback = getCachedResponse(action);
+            return new Response(JSON.stringify({ success: true, data: fallback }), {
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        } catch {
+            return new Response(JSON.stringify({ success: false, error: error.message || 'Internal error' }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
     }
 });
