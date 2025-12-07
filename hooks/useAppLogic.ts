@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import * as db from '../services/dbService';
 import * as gemini from '../services/geminiService';
 import * as nudgeEngine from '../services/nudgeEngine';
-import type { Entry, Reflection, Intention, Message, IntentionTimeframe, Habit, HabitLog, HabitFrequency, EntrySuggestion, AIStatus, UserContext, HabitCategory, InsightCard, Nudge } from '../types';
+import type { Entry, Reflection, Intention, Message, IntentionTimeframe, Habit, HabitLog, HabitFrequency, EntrySuggestion, AIStatus, UserContext, HabitCategory, InsightCard, Nudge, Profile } from '../types';
 import { isSameDay, getWeekId, getMonthId } from '../utils/date';
 import { calculateStreak } from '../utils/streak';
 
@@ -27,6 +27,7 @@ export const useAppLogic = () => {
     const [aiStatus, setAiStatus] = useState<AIStatus>('initializing');
     const [aiError, setAiError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; id: number } | null>(null);
+    const [accountCreatedAt, setAccountCreatedAt] = useState<string | null>(null);
 
     // Pagination State
     const [page, setPage] = useState(0);
@@ -81,7 +82,7 @@ export const useAppLogic = () => {
             try {
                 setAiStatus('verifying');
                 // Load only first page of entries
-                const [userEntries, userReflections, userIntentions, userHabits, userHabitLogs, userInsights, userAutoReflections, userNudges] = await Promise.all([
+                const [userEntries, userReflections, userIntentions, userHabits, userHabitLogs, userInsights, userAutoReflections, userNudges, userProfile] = await Promise.all([
                     db.getEntries(user.id, 0, PAGE_SIZE),
                     db.getReflections(user.id),
                     db.getIntentions(user.id),
@@ -89,7 +90,8 @@ export const useAppLogic = () => {
                     db.getCurrentPeriodHabitLogs(user.id),
                     db.getInsightCards(user.id),
                     db.getAutoReflections(user.id, 1),
-                    db.getPendingNudges(user.id)
+                    db.getPendingNudges(user.id),
+                    db.getProfile(user.id)
                 ]);
 
                 if (isMounted.current) {
@@ -105,6 +107,9 @@ export const useAppLogic = () => {
                     setInsights(userInsights);
                     setAutoReflections(userAutoReflections);
                     setNudges(userNudges);
+                    if (userProfile?.created_at) {
+                        setAccountCreatedAt(userProfile.created_at);
+                    }
                     // Ref will sync via effect
                 }
 
@@ -499,7 +504,7 @@ export const useAppLogic = () => {
     };
 
     return {
-        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight },
+        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight, accountCreatedAt },
         actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight, setIntentions }
     };
 };

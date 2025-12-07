@@ -25,6 +25,9 @@ interface InsightsViewProps {
     // Life Dashboard Props
     onOpenYearlyReview: () => void;
     isGeneratingYearly: boolean;
+
+    // Account info for progressive unlock
+    accountCreatedAt?: string | null;
 }
 
 type InsightsTab = 'reflect' | 'deep_dive';
@@ -33,7 +36,8 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     entries, intentions, reflections, habits, habitLogs,
     onGenerateDaily, onGenerateWeekly, onGenerateMonthly, onExploreInChat,
     isGenerating, onAddSuggestion, aiStatus, onDebug, debugOutput,
-    onOpenYearlyReview, isGeneratingYearly
+    onOpenYearlyReview, isGeneratingYearly,
+    accountCreatedAt
 }) => {
     const [activeTab, setActiveTab] = useState<InsightsTab>('reflect');
 
@@ -92,6 +96,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                 aiStatus={aiStatus}
                                 onDebug={onDebug}
                                 debugOutput={debugOutput}
+                                accountCreatedAt={accountCreatedAt || undefined}
                             />
                         </motion.div>
                     ) : (

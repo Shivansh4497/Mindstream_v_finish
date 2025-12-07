@@ -393,6 +393,7 @@ export const MindstreamApp: React.FC = () => {
                                         }
                                     }}
                                     isGeneratingYearly={isGeneratingYearly}
+                                    accountCreatedAt={state.accountCreatedAt}
                                 />
                             </motion.div>
                         )}

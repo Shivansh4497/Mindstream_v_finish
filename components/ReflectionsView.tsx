@@ -8,9 +8,14 @@ import { AIStatus } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { DailyPulse } from './DailyPulse';
 import { generateChartInsights } from '../services/chartInsightsService';
-import { subDays } from 'date-fns';
+import { subDays, differenceInDays } from 'date-fns';
+import { Lock } from 'lucide-react';
 
 type ReflectionTimeframe = 'daily' | 'weekly' | 'monthly' | 'insights';
+
+// Progressive unlock thresholds
+const WEEKLY_UNLOCK = { days: 3, entries: 5 };
+const MONTHLY_UNLOCK = { days: 14, entries: 10 };
 
 interface ReflectionsViewProps {
   entries: Entry[];
@@ -27,6 +32,7 @@ interface ReflectionsViewProps {
   aiStatus: AIStatus;
   onDebug: () => void;
   debugOutput: string | null;
+  accountCreatedAt?: string; // ISO timestamp of when account was created
 }
 
 const timeframes: { id: ReflectionTimeframe; label: string }[] = [
@@ -50,7 +56,8 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
   onAddSuggestion,
   aiStatus,
   onDebug,
-  debugOutput
+  debugOutput,
+  accountCreatedAt
 }) => {
   const [activeTimeframe, setActiveTimeframe] = useState<ReflectionTimeframe>('daily');
   const [isGeneratingPulse, setIsGeneratingPulse] = useState(false);
@@ -61,6 +68,27 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
     sentiment: string | null;
     heatmaps: Array<{ habitIndex: number; text: string }>;
   }>({ dailyPulse: null, correlation: null, sentiment: null, heatmaps: [] });
+
+  // Calculate days since account creation and entry count
+  const { daysSinceInstall, entryCount, weeklyUnlocked, monthlyUnlocked } = useMemo(() => {
+    const now = new Date();
+    const createdAt = accountCreatedAt ? new Date(accountCreatedAt) : now;
+    const daysSinceInstall = differenceInDays(now, createdAt);
+    const entryCount = entries.filter(e => !e.id.startsWith('temp-')).length;
+
+    const weeklyUnlocked = daysSinceInstall >= WEEKLY_UNLOCK.days && entryCount >= WEEKLY_UNLOCK.entries;
+    const monthlyUnlocked = daysSinceInstall >= MONTHLY_UNLOCK.days && entryCount >= MONTHLY_UNLOCK.entries;
+
+    return { daysSinceInstall, entryCount, weeklyUnlocked, monthlyUnlocked };
+  }, [accountCreatedAt, entries]);
+
+  // Get unlock progress for display
+  const getUnlockProgress = (type: 'weekly' | 'monthly') => {
+    const threshold = type === 'weekly' ? WEEKLY_UNLOCK : MONTHLY_UNLOCK;
+    const daysNeeded = Math.max(0, threshold.days - daysSinceInstall);
+    const entriesNeeded = Math.max(0, threshold.entries - entryCount);
+    return { daysNeeded, entriesNeeded };
+  };
 
   // Fetch insights when Insights tab is active
   useEffect(() => {
@@ -82,7 +110,7 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
         return;
       }
 
-      const latestInsight = data[0];
+      const latestInsight = data[0] as any;
       const heatmaps = Array.isArray(latestInsight.heatmap_insights)
         ? latestInsight.heatmap_insights.map((text: string, idx: number) => ({
           habitIndex: idx,
@@ -136,7 +164,7 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
       });
 
       // Save to database (UPSERT: update if exists, insert if not)
-      const { error: insertError } = await supabase.from('chart_insights')
+      const { error: insertError } = await (supabase as any).from('chart_insights')
         .upsert({
           user_id: user.id,
           daily_pulse: generatedInsights.dailyPulse,
@@ -148,9 +176,10 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
           onConflict: 'user_id,insight_date'
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error saving insights to DB:', insertError);
+      }
 
-      // Update UI immediately
       const heatmaps = generatedInsights.heatmaps.map((text: string, idx: number) => ({
         habitIndex: idx,
         text
@@ -197,6 +226,43 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
     return { daily, weekly, monthly };
   }, [reflections]);
 
+  // Render locked state for a timeframe
+  const renderLockedState = (type: 'weekly' | 'monthly') => {
+    const progress = getUnlockProgress(type);
+    const label = type === 'weekly' ? 'Weekly' : 'Monthly';
+    const requirements = [];
+
+    if (progress.daysNeeded > 0) {
+      requirements.push(`${progress.daysNeeded} more day${progress.daysNeeded === 1 ? '' : 's'}`);
+    }
+    if (progress.entriesNeeded > 0) {
+      requirements.push(`${progress.entriesNeeded} more entr${progress.entriesNeeded === 1 ? 'y' : 'ies'}`);
+    }
+
+    return (
+      <div className="h-full flex items-center justify-center text-center p-8">
+        <div className="max-w-sm">
+          <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+            <Lock className="w-8 h-8 text-gray-400" />
+          </div>
+          <h2 className="text-2xl font-bold font-display text-white mb-2">
+            {label} Reflections
+          </h2>
+          <p className="text-gray-400 mb-4">
+            Unlock {type} reflections by continuing to journal.
+          </p>
+          <div className="bg-dark-surface-light rounded-lg p-4 text-left">
+            <p className="text-sm text-gray-300">
+              <span className="text-brand-teal font-medium">Still needed:</span>
+              <br />
+              {requirements.join(' and ')}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeTimeframe) {
       case 'daily':
@@ -213,8 +279,14 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
           debugOutput={debugOutput}
         />;
       case 'weekly':
+        if (!weeklyUnlocked) {
+          return renderLockedState('weekly');
+        }
         return <WeeklyReflections entries={entries} weeklyReflections={weekly} onGenerate={onGenerateWeekly} onExplore={onExploreInChat} isGenerating={isGenerating} onAddSuggestion={onAddSuggestion} />;
       case 'monthly':
+        if (!monthlyUnlocked) {
+          return renderLockedState('monthly');
+        }
         return <MonthlyReflections entries={entries} monthlyReflections={monthly} onGenerate={onGenerateMonthly} onExplore={onExploreInChat} isGenerating={isGenerating} onAddSuggestion={onAddSuggestion} />;
       case 'insights':
         return (
@@ -252,6 +324,13 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
     }
   };
 
+  // Check if a tab should show a lock icon
+  const isTabLocked = (tfId: ReflectionTimeframe): boolean => {
+    if (tfId === 'weekly') return !weeklyUnlocked;
+    if (tfId === 'monthly') return !monthlyUnlocked;
+    return false;
+  };
+
   return (
     <div className="h-full flex flex-col">
       <header className="flex-shrink-0 p-4 border-b border-white/10 flex items-center overflow-x-auto">
@@ -260,11 +339,14 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
             <button
               key={tf.id}
               onClick={() => setActiveTimeframe(tf.id)}
-              className={`py-2 px-4 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap ${activeTimeframe === tf.id
+              className={`py-2 px-4 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5 ${activeTimeframe === tf.id
                 ? 'bg-brand-teal text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                : isTabLocked(tf.id)
+                  ? 'text-gray-500 hover:bg-white/5'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
                 }`}
             >
+              {isTabLocked(tf.id) && <Lock className="w-3 h-3" />}
               {tf.label}
             </button>
           ))}
