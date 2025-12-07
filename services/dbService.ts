@@ -401,11 +401,14 @@ export const getHabits = async (userId: string): Promise<Habit[]> => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 365);
 
-    // FIX: Cast supabase to any to avoid strict type inference errors with 'order' on inferred 'never' type
+    // Get habit IDs for filtering logs
+    const habitIds = habits.map(h => h.id);
+
+    // FIX: Query by habit_id (not user_id which doesn't exist in habit_logs table)
     const { data: logsData } = await (supabase as any)
         .from('habit_logs')
         .select('habit_id, completed_at')
-        .eq('user_id', userId)
+        .in('habit_id', habitIds)
         .gte('completed_at', cutoffDate.toISOString())
         .order('completed_at', { ascending: false });
 
