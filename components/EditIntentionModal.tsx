@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
 import type { Intention } from '../types';
 import { ETASelector } from './ETASelector';
 import type { ETAPreset } from '../utils/etaCalculator';
@@ -16,12 +15,14 @@ const CATEGORIES = ['Health', 'Growth', 'Career', 'Finance', 'Connection', 'Syst
 // Common emojis for intentions
 const COMMON_EMOJIS = ['🎯', '🚀', '💪', '📚', '💼', '💰', '❤️', '🌟', '✨', '🔥', '⏰', '📝', '🎨', '🏃', '🧘', '💡'];
 
+// Predefined tags that users can select from
+const AVAILABLE_TAGS = ['career', 'health', 'personal', 'growth', 'finance', 'relationships', 'creativity', 'learning', 'productivity', 'mindfulness'] as const;
+
 export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intention, onSave, onCancel }) => {
     const [text, setText] = useState(intention.text);
     const [emoji, setEmoji] = useState(intention.emoji || '🎯');
     const [category, setCategory] = useState<typeof CATEGORIES[number]>(intention.category || 'Growth');
-    const [tags, setTags] = useState<string[]>(intention.tags || []);
-    const [newTag, setNewTag] = useState('');
+    const [selectedTag, setSelectedTag] = useState<string>(intention.tags?.[0] || '');
     const [showETASelector, setShowETASelector] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -41,14 +42,15 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     );
     const [isSaving, setIsSaving] = useState(false);
 
-    // Compare arrays for change detection
-    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(intention.tags || []);
+    // Compare for change detection
+    const originalTag = intention.tags?.[0] || '';
+    const tagChanged = selectedTag !== originalTag;
 
     const hasChanged =
         text !== intention.text ||
         emoji !== intention.emoji ||
         category !== intention.category ||
-        tagsChanged ||
+        tagChanged ||
         selectedPreset !== getInitialPreset() ||
         (selectedDueDate?.toISOString() !== intention.due_date && !(selectedDueDate === null && !intention.due_date));
 
@@ -60,7 +62,7 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
             text: text.trim(),
             emoji,
             category,
-            tags,
+            tags: selectedTag ? [selectedTag] : [],
             due_date: selectedDueDate?.toISOString() || null,
             is_life_goal: selectedPreset === 'life',
         };
@@ -72,25 +74,6 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     const handlePresetSelect = (preset: ETAPreset, dueDate: Date | null) => {
         setSelectedPreset(preset);
         setSelectedDueDate(dueDate);
-    };
-
-    const handleAddTag = () => {
-        const trimmedTag = newTag.trim().toLowerCase();
-        if (trimmedTag && !tags.includes(trimmedTag)) {
-            setTags([...tags, trimmedTag]);
-            setNewTag('');
-        }
-    };
-
-    const handleRemoveTag = (tagToRemove: string) => {
-        setTags(tags.filter(t => t !== tagToRemove));
-    };
-
-    const handleTagKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleAddTag();
-        }
     };
 
     // Format due date for display
@@ -179,48 +162,21 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
                     />
                 </div>
 
-                {/* Tags Section */}
+                {/* Tag Selector (single dropdown) */}
                 <div className="mb-4">
-                    <label className="text-sm text-gray-400 mb-2 block">Tags</label>
-
-                    {/* Existing Tags */}
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {tags.map((tag) => (
-                                <span
-                                    key={tag}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-teal/20 text-brand-teal rounded-full text-sm"
-                                >
-                                    #{tag}
-                                    <button
-                                        onClick={() => handleRemoveTag(tag)}
-                                        className="hover:bg-white/10 rounded-full p-0.5 transition-colors"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Add Tag Input */}
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={newTag}
-                            onChange={(e) => setNewTag(e.target.value)}
-                            onKeyDown={handleTagKeyDown}
-                            placeholder="Add a tag..."
-                            className="flex-1 bg-dark-surface-light rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow border border-white/10"
-                        />
-                        <button
-                            onClick={handleAddTag}
-                            disabled={!newTag.trim()}
-                            className="p-2 bg-brand-teal/20 text-brand-teal rounded-lg hover:bg-brand-teal/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                    </div>
+                    <label className="text-sm text-gray-400 mb-1 block">Tag</label>
+                    <select
+                        value={selectedTag}
+                        onChange={(e) => setSelectedTag(e.target.value)}
+                        className="w-full bg-dark-surface-light rounded-lg p-3 text-white border border-white/10 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow appearance-none cursor-pointer"
+                    >
+                        <option value="" className="bg-dark-surface">No tag</option>
+                        {AVAILABLE_TAGS.map((tag) => (
+                            <option key={tag} value={tag} className="bg-dark-surface capitalize">
+                                {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Due Date Section */}
