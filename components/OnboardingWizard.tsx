@@ -204,7 +204,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       'Conflict': "What happened that caused this tension?",
       'Burnout': "What specifically is draining your energy right now?",
       'Imposter Syndrome': "What is one specific task making you doubt yourself?",
-      'Boredom': "What feels uninspiring about your work right now?",
+      'Boredom': "What's missing that would make your work more engaging?",
       // Relationships
       'Misunderstanding': "What do you wish they understood?",
       'Distance': "Who are you missing right now, and why?",
@@ -214,9 +214,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       // Health
       'Fatigue': "What is stopping you from resting?",
       'Sleep': "What thoughts are keeping you awake?",
-      'Diet': "How is your body reacting to your recent choices?",
+      'Diet': "What eating choices are troubling you lately?",
       'Body Image': "What negative thought is cycling in your mind?",
-      'Pain': "How is this physical sensation affecting your mood?",
+      'Pain': "Tell me about the discomfort you're experiencing.",
       // Self
       'Purpose': "What feels meaningless right now?",
       'Motivation': "What block is standing in your way?",
@@ -235,7 +235,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       // Work
       'Deadlines': "What progress are you celebrating?",
       'Conflict': "How did you handle that situation well?",
-      'Burnout': "How are you finding balance today?",
+      'Burnout': "What's helping you recover and recharge?",
       'Imposter Syndrome': "How did you overcome that doubt today?",
       'Boredom': "What new interest is sparking your curiosity?",
       // Relationships
@@ -245,11 +245,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       'Loneliness': "Who made you feel seen today?",
       'Trust': "What strengthened your trust today?",
       // Health
-      'Fatigue': "How are you prioritizing your rest?",
+      'Fatigue': "What's helping you feel more energized?",
       'Sleep': "How is your energy feeling after resting?",
       'Diet': "How are you nourishing yourself today?",
       'Body Image': "What do you appreciate about your body right now?",
-      'Pain': "How are you being gentle with yourself?",
+      'Pain': "What's bringing you comfort or relief?",
       // Self
       'Purpose': "What reinforced your sense of purpose today?",
       'Motivation': "What is fueling your drive right now?",
@@ -257,7 +257,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       'Regret': "What lesson have you made peace with?",
       'Growth': "What small step forward did you take?",
       // Finance
-      'Debt': "What positive step did you take for your finances?",
+      'Debt': "What progress are you making toward financial freedom?",
       'Budgeting': "How did you stay on track today?",
       'Spending': "What purchase brought you genuine value?",
       'Future Security': "What is making you feel secure right now?",
