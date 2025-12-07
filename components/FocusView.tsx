@@ -15,7 +15,7 @@ interface FocusViewProps {
     onToggleHabit: (id: string) => void;
     onEditHabit: (habit: Habit) => void;
     onDeleteHabit: (id: string) => void;
-    onAddHabit: (name: string, emoji: string, frequency: HabitFrequency, category: string) => Promise<void>;
+    onAddHabit: (name: string, frequency: HabitFrequency) => Promise<void>;
     isAddingHabit: boolean;
     activeHabitFrequency: HabitFrequency;
     onHabitFrequencyChange: (freq: HabitFrequency) => void;
@@ -86,7 +86,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
                                 onToggle={onToggleHabit}
                                 onEdit={onEditHabit}
                                 onDelete={onDeleteHabit}
-                                onAddHabit={onAddHabit}
+                                onAddHabit={(name, _emoji) => onAddHabit(name, activeHabitFrequency)}
                                 activeFrequency={activeHabitFrequency}
                                 onFrequencyChange={onHabitFrequencyChange}
                             />
