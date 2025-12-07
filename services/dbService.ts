@@ -21,17 +21,18 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
 
 export const createProfile = async (user: User): Promise<Profile | null> => {
     if (!supabase) throw new Error("Supabase client not initialized");
+    // Use upsert to handle account recreation with same email (prevents 409 conflict)
     const { data, error } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
             id: user.id,
             email: user.email,
-            avatar_url: user.user_metadata.avatar_url,
-        } as any)
+            avatar_url: user.user_metadata?.avatar_url || null,
+        } as any, { onConflict: 'id' })
         .select()
         .single();
     if (error) {
-        console.error('Error creating profile:', error);
+        console.error('Error creating/updating profile:', error);
         throw error;
     }
     return data;
@@ -794,8 +795,11 @@ export const getUserContext = async (userId: string): Promise<UserContext> => {
         getUserPersonality(userId)
     ]);
 
+    // Filter out system/welcome entries from context (they shouldn't be used as user input)
+    const userEntries = entries.filter(e => !(e.tags && e.tags.includes('welcome')));
+
     return {
-        recentEntries: entries,
+        recentEntries: userEntries,
         pendingIntentions: intentions.filter(i => i.status === 'pending'),
         activeHabits: habits,
         latestReflection: reflections.length > 0 ? reflections[0] : null,
