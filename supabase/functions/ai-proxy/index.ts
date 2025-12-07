@@ -10,10 +10,17 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-// Model configuration with fallback
+// Model configuration with fallback chain
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const PRIMARY_MODEL = 'gemini-2.0-flash-exp'; // Experimental version via API
-const BACKUP_MODEL = 'gemini-1.5-flash'; // Stable fallback
+const BACKUP_MODEL = 'gemini-1.5-flash-latest'; // Stable fallback with -latest suffix
+const FALLBACK_MODEL = 'gemini-pro'; // Last resort - always available
+
+// Startup logging - check if secrets are loaded
+console.log('[AI Proxy] Initializing...');
+console.log('[AI Proxy] GEMINI_API_KEY present:', !!geminiKey);
+console.log('[AI Proxy] GEMINI_API_KEY length:', geminiKey?.length || 0);
+console.log('[AI Proxy] Models:', PRIMARY_MODEL, '->', BACKUP_MODEL, '->', FALLBACK_MODEL);
 
 interface GeminiRequest {
     action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection';
@@ -51,11 +58,18 @@ async function callGeminiWithModel(model: string, prompt: string): Promise<strin
 }
 
 async function callGemini(prompt: string): Promise<string> {
+    // Triple fallback chain
     try {
         return await callGeminiWithModel(PRIMARY_MODEL, prompt);
-    } catch (error: any) {
-        console.warn(`[AI Proxy] Primary model failed, trying backup...`);
-        return await callGeminiWithModel(BACKUP_MODEL, prompt);
+    } catch (error1: any) {
+        console.warn(`[AI Proxy] Primary model (${PRIMARY_MODEL}) failed: ${error1.message}`);
+        try {
+            return await callGeminiWithModel(BACKUP_MODEL, prompt);
+        } catch (error2: any) {
+            console.warn(`[AI Proxy] Backup model (${BACKUP_MODEL}) failed: ${error2.message}`);
+            console.warn(`[AI Proxy] Trying last resort model: ${FALLBACK_MODEL}`);
+            return await callGeminiWithModel(FALLBACK_MODEL, prompt);
+        }
     }
 }
 
