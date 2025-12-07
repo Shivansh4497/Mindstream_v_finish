@@ -10,13 +10,13 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-// Model configuration with fallback chain - using correct v1beta model names
+// Model configuration - verified from ListModels API
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const PRIMARY_MODEL = 'gemini-1.5-flash-002'; // Fast, stable (Sept 2024)
-const BACKUP_MODEL = 'gemini-1.5-pro-002'; // More capable, stable fallback
-const FALLBACK_MODEL = 'gemini-1.5-flash-8b-001'; // Smaller, always available
+const PRIMARY_MODEL = 'gemini-2.0-flash'; // Fast, available
+const BACKUP_MODEL = 'gemini-2.0-flash-lite'; // Lighter backup
+const FALLBACK_MODEL = 'gemini-2.5-flash'; // Newest fallback
 
-// Startup logging - check if secrets are loaded
+// Startup logging
 console.log('[AI Proxy] Initializing...');
 console.log('[AI Proxy] GEMINI_API_KEY present:', !!geminiKey);
 console.log('[AI Proxy] GEMINI_API_KEY length:', geminiKey?.length || 0);
@@ -151,6 +151,17 @@ serve(async (req) => {
         let result: any;
 
         switch (action) {
+            // Debug: List available models
+            case 'list-models': {
+                const listUrl = `${GEMINI_API_BASE.replace('/models', '')}?key=${geminiKey}`;
+                console.log('[AI Proxy] Calling ListModels API...');
+                const response = await fetch(listUrl);
+                const data = await response.json();
+                console.log('[AI Proxy] Available models:', JSON.stringify(data.models?.map((m: any) => m.name) || data.error, null, 2));
+                result = { models: data.models?.map((m: any) => ({ name: m.name, supportedGenerationMethods: m.supportedGenerationMethods })) || [], error: data.error };
+                break;
+            }
+
             case 'process-entry': {
                 const { entryText } = payload;
                 const prompt = `Analyze this journal entry and respond with ONLY a JSON object (no markdown, no code blocks):
