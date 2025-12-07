@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus } from 'lucide-react';
 import type { Intention } from '../types';
 import { ETASelector } from './ETASelector';
 import type { ETAPreset } from '../utils/etaCalculator';
-import { calculateDueDate } from '../utils/etaCalculator';
 
 interface EditIntentionModalProps {
     intention: Intention;
@@ -20,6 +20,8 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     const [text, setText] = useState(intention.text);
     const [emoji, setEmoji] = useState(intention.emoji || '🎯');
     const [category, setCategory] = useState<typeof CATEGORIES[number]>(intention.category || 'Growth');
+    const [tags, setTags] = useState<string[]>(intention.tags || []);
+    const [newTag, setNewTag] = useState('');
     const [showETASelector, setShowETASelector] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -39,10 +41,14 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     );
     const [isSaving, setIsSaving] = useState(false);
 
+    // Compare arrays for change detection
+    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(intention.tags || []);
+
     const hasChanged =
         text !== intention.text ||
         emoji !== intention.emoji ||
         category !== intention.category ||
+        tagsChanged ||
         selectedPreset !== getInitialPreset() ||
         (selectedDueDate?.toISOString() !== intention.due_date && !(selectedDueDate === null && !intention.due_date));
 
@@ -54,6 +60,7 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
             text: text.trim(),
             emoji,
             category,
+            tags,
             due_date: selectedDueDate?.toISOString() || null,
             is_life_goal: selectedPreset === 'life',
         };
@@ -65,6 +72,25 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
     const handlePresetSelect = (preset: ETAPreset, dueDate: Date | null) => {
         setSelectedPreset(preset);
         setSelectedDueDate(dueDate);
+    };
+
+    const handleAddTag = () => {
+        const trimmedTag = newTag.trim().toLowerCase();
+        if (trimmedTag && !tags.includes(trimmedTag)) {
+            setTags([...tags, trimmedTag]);
+            setNewTag('');
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        setTags(tags.filter(t => t !== tagToRemove));
+    };
+
+    const handleTagKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddTag();
+        }
     };
 
     // Format due date for display
@@ -151,6 +177,50 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
                         className="w-full bg-dark-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow resize-none border border-white/10"
                         placeholder="What do you want to achieve?"
                     />
+                </div>
+
+                {/* Tags Section */}
+                <div className="mb-4">
+                    <label className="text-sm text-gray-400 mb-2 block">Tags</label>
+
+                    {/* Existing Tags */}
+                    {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {tags.map((tag) => (
+                                <span
+                                    key={tag}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-teal/20 text-brand-teal rounded-full text-sm"
+                                >
+                                    #{tag}
+                                    <button
+                                        onClick={() => handleRemoveTag(tag)}
+                                        className="hover:bg-white/10 rounded-full p-0.5 transition-colors"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add Tag Input */}
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            onKeyDown={handleTagKeyDown}
+                            placeholder="Add a tag..."
+                            className="flex-1 bg-dark-surface-light rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow border border-white/10"
+                        />
+                        <button
+                            onClick={handleAddTag}
+                            disabled={!newTag.trim()}
+                            className="p-2 bg-brand-teal/20 text-brand-teal rounded-lg hover:bg-brand-teal/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Due Date Section */}

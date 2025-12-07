@@ -4,7 +4,7 @@ import { DailyReflections } from './DailyReflections';
 import { WeeklyReflections } from './WeeklyReflections';
 import { MonthlyReflections } from './MonthlyReflections';
 import { SentimentTimeline } from './SentimentTimeline';
-import { AIStatus } from '../MindstreamApp';
+import { AIStatus } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { DailyPulse } from './DailyPulse';
 import { generateChartInsights } from '../services/chartInsightsService';
