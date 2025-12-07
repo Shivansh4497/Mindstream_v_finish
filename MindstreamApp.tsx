@@ -205,10 +205,15 @@ export const MindstreamApp: React.FC = () => {
         return <OnboardingWizard userId={user.id} onComplete={(dest, context, q) => {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
             db.logEvent(user.id, 'onboarding_completed', { path: 'guided' });
+
             if (dest === 'chat' && context && q) {
+                // Go to Chat with context seeded
                 setView('chat');
-                actions.handleSendMessage(context); // Seeding context
+                actions.handleSendMessage(context);
                 actions.setMessages(prev => [...prev, { sender: 'ai', text: q }]);
+            } else {
+                // Default to Stream for all other cases (including 'stream' destination or missing context)
+                setView('stream');
             }
         }} />;
     }
