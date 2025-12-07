@@ -11,6 +11,7 @@ interface IntentionsViewProps {
     onDelete: (id: string) => void;
     onStarToggle: (id: string, isStarred: boolean) => void;
     onEdit?: (intention: Intention) => void;
+    onAddIntention?: (text: string) => void;
 }
 
 const urgencyCategoryOrder: UrgencyCategory[] = ['overdue', 'today', 'this_week', 'this_month', 'later', 'life'];
@@ -20,7 +21,8 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
     onToggle,
     onDelete,
     onStarToggle,
-    onEdit
+    onEdit,
+    onAddIntention
 }) => {
     const [showCompleted, setShowCompleted] = useState(false);
     const [isOverdueCollapsed, setIsOverdueCollapsed] = useState(true); // Default to collapsed
@@ -101,7 +103,7 @@ export const IntentionsView: React.FC<IntentionsViewProps> = ({
 
             <main className="flex-grow overflow-y-auto p-4">
                 {!hasAnyIntentions && (
-                    <EmptyIntentionsState />
+                    <EmptyIntentionsState onCreateIntention={onAddIntention} />
                 )}
 
                 {/* Pending Intentions by Urgency */}

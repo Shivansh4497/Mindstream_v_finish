@@ -406,11 +406,20 @@ export const useAppLogic = () => {
         if (!user) return;
         setIsAddingHabit(true);
         try {
-            await db.addHabit(user.id, n, "⚡️", "System", f).then(h => {
-                if (isMounted.current && h) setHabits(prev => [...prev, h]);
-            });
-        }
-        finally {
+            // Get AI-generated emoji and category
+            let emoji = '✨';
+            let category: HabitCategory = 'Growth';
+            try {
+                const analysis = await gemini.analyzeHabit(n);
+                emoji = analysis.emoji;
+                category = analysis.category;
+            } catch (e) {
+                console.warn('[handleAddHabit] AI analysis failed, using defaults');
+            }
+
+            const h = await db.addHabit(user.id, n, emoji, category, f);
+            if (isMounted.current && h) setHabits(prev => [...prev, h]);
+        } finally {
             if (isMounted.current) setIsAddingHabit(false);
         }
     };

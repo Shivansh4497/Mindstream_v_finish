@@ -111,6 +111,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
                                 onDelete={onDeleteIntention}
                                 onStarToggle={onStarToggleIntention}
                                 onEdit={onEditIntention}
+                                onAddIntention={(text) => onAddIntention(text, null, false)}
                             />
                             <IntentionsInputBar onAddIntention={onAddIntention} />
                         </motion.div>
