@@ -363,6 +363,24 @@ Insights View (unlocks at 5 entries)
 
 **Navigation:** ← Previous | Next → | Share
 
+### 6.5 Reflection Unlock Flow (Tiered)
+**Component:** [ReflectionUnlockModal.tsx](file:///Users/director/Mindstream_v1/components/ReflectionUnlockModal.tsx)
+
+**Triggers (checked on app load):**
+- **Daily:** 5 entries total
+- **Weekly:** 3 days since install + 5 entries
+- **Monthly:** 14 days since install + 10 entries
+
+**Flow:**
+1. User opens app
+2. Threshold met for first time
+3. `ReflectionUnlockModal` appears overlays screen
+4. Displays tier-specific icon, title, and description
+5. **Actions:**
+   - "Check it out" → Redirects to Insights View (sets `seen{Tier}Unlock = true`)
+   - "Maybe later" → Dismisses modal (sets `seen{Tier}Unlock = true`)
+6. **Badge:** Red pulsing dot on Insights tab if unlocked but not visited
+
 ---
 
 ## 7. Chat View Flows
@@ -532,7 +550,10 @@ Settings View
 
 | Feature | Unlock Condition | Status |
 |---------|------------------|--------|
-| Insights tab | 5+ entries | ✅ Implemented |
+| Insights tab | 5 entries | ✅ Implemented |
+| Daily Reflections | 5 entries | ✅ Implemented |
+| Weekly Reflections | 3 days + 5 entries | ✅ Implemented |
+| Monthly Reflections | 14 days + 10 entries | ✅ Implemented |
 | InsightModal (Quick Start) | First entry submitted | ✅ Implemented |
 | Yearly Review | Available in Deep Dive | ✅ Implemented |
 | Pattern Detection nudges | Based on entry patterns | ✅ Implemented |

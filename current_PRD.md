@@ -575,10 +575,12 @@ Suggestions must:
 
 **Philosophy:** Show features only when they become meaningful.
 
-### 6.1 The Rule
+### 6.1 The Rule (Tiered System)
 ```
-entries.length < 5  →  Hide Insights tab
-entries.length >= 5 →  Show Insights tab + unlock notification
+1. Insights Tab Unlock:  5 entries
+2. Daily Reflections:    5 entries
+3. Weekly Reflections:   3 days since install AND 5 entries
+4. Monthly Reflections:  14 days since install AND 10 entries
 ```
 
 ### 6.2 Tab Visibility by Entry Count
@@ -596,25 +598,22 @@ entries.length >= 5 →  Show Insights tab + unlock notification
 
 ### 6.4 Unlock Experience
 
-**When user reaches 5 entries:**
-1. Toast appears: "🎉 Insights unlocked!"
-2. Red pulsing badge appears on Insights tab
-3. Badge persists until user visits Insights
-4. First visit clears the badge
+**When a tier is unlocked:**
+1. **Modal:** `ReflectionUnlockModal` appears with celebration (confetti + icon)
+2. **Action:** User clicks "Check it out" → Navigates to Insights view
+3. **Badge:** Red pulsing badge appears on Insights tab until visited
+4. **Toast:** "🎉 Insights tab unlocked!" (for the initial 5-entry unlock)
 
 **Implementation:**
 ```typescript
-// NavBar.tsx
-const visibleItems = navItems.filter(item => 
-    item.id !== 'insights' || entryCount >= 5
-);
-
 // MindstreamApp.tsx
-useEffect(() => {
-    if (realEntryCount >= 5 && !hasVisitedInsights) {
-        actions.setToast({ message: '🎉 Insights tab unlocked!', id: Date.now() });
-    }
-}, [realEntryCount]);
+const WEEKLY_UNLOCK = { days: 3, entries: 5 };
+const MONTHLY_UNLOCK = { days: 14, entries: 10 };
+
+const unlockStatus = useMemo(() => {
+    // ... calculation logic ...
+    return { dailyUnlocked, weeklyUnlocked, monthlyUnlocked };
+}, [state.accountCreatedAt, realEntryCount]);
 ```
 
 ### 6.5 Future Progressive Disclosure (Deferred)
@@ -703,6 +702,7 @@ GROUP BY properties->>'action';
 | **react-markdown** | Chat rendering | 10.1.0 | Markdown in AI responses |
 | **canvas-confetti** | Celebrations | 1.9.3 | Streak milestones |
 | **recharts** | Data viz | 2.15.0 | Sentiment timelines |
+| **AIStatusBanner** | UI Comp | Custom | Shows real-time AI status (ready, error, etc.) |
 
 ### 6.2 Backend Stack
 
