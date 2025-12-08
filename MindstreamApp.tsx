@@ -149,76 +149,8 @@ export const MindstreamApp: React.FC = () => {
         }
     }, [insightsUnlocked]);
 
-    // Generate insight for Quick Start users after their first entry
-    useEffect(() => {
-        // Only for Quick Start users who haven't seen an insight yet
-        if (onboardingStep !== ONBOARDING_QUICK_START) return;
-        if (hasSeenFirstInsight) return;
-        if (state.aiStatus !== 'ready') return;
-
-        // Check if there's a new entry (more than just temp entries)
-        const realEntries = state.entries.filter(e => !e.id.startsWith('temp-'));
-        if (realEntries.length === 0) return;
-
-        // Generate insight for the first entry
-        const firstEntry = realEntries[0];
-        if (!firstEntry.text || firstEntry.text.length < 10) return;
-
-        // Prevent multiple calls
-        if (state.pendingInsight) return;
-
-        // Generate the insight
-        gemini.generateInstantInsight(
-            firstEntry.text,
-            firstEntry.primary_sentiment || 'Reflective',
-            'Self', // Default life area
-            'General' // Default trigger
-        ).then(async (insightResult) => {
-            const CONFIDENCE_THRESHOLD = 0.6;
-
-            // Generate suggested habit
-            const suggestions = await gemini.generateEntrySuggestions(firstEntry.text).catch(() => null);
-            const habitSuggestion = suggestions?.find(s => s.type === 'habit');
-            const intentionSuggestion = suggestions?.find(s => s.type === 'intention');
-
-            // Only show modal if confidence is high enough
-            if (insightResult.confidence >= CONFIDENCE_THRESHOLD) {
-                actions.setPendingInsight({
-                    insight: insightResult.insight,
-                    followUpQuestion: insightResult.followUpQuestion,
-                    entryText: firstEntry.text,
-                    suggestedHabit: habitSuggestion ? { name: habitSuggestion.text, emoji: habitSuggestion.emoji || '🎯' } : undefined,
-                    suggestedIntention: intentionSuggestion?.text,
-                    confidence: insightResult.confidence,
-                });
-
-                // Track that insight modal was shown
-                if (user) {
-                    db.logEvent(user.id, 'insight_modal_shown', {
-                        entry_id: firstEntry.id,
-                        confidence: insightResult.confidence,
-                        has_habit_suggestion: !!habitSuggestion,
-                        has_intention_suggestion: !!intentionSuggestion
-                    });
-                    // Track first insight viewed (one-time event)
-                    if (!hasSeenFirstInsight) {
-                        db.logEvent(user.id, 'first_insight_viewed', {});
-                    }
-                }
-            } else {
-                // Low confidence: show as toast instead of modal
-                console.log(`[Insight] Low confidence (${insightResult.confidence}), skipping modal`);
-                setHasSeenFirstInsight(true); // Mark as "seen" so we don't retry
-                if (user) {
-                    db.logEvent(user.id, 'insight_modal_shown', {
-                        entry_id: firstEntry.id,
-                        confidence: insightResult.confidence,
-                        skipped_low_confidence: true
-                    });
-                }
-            }
-        }).catch(console.error);
-    }, [state.entries, state.aiStatus, onboardingStep, hasSeenFirstInsight, state.pendingInsight]);
+    // NOTE: Removed instant insight generation for Quick Start users
+    // It was triggering on the welcome entry which is not useful
 
     // Chat Starters - Using the new reflectionService
     useEffect(() => {
