@@ -49,10 +49,44 @@ export const DailyReflections: React.FC<DailyReflectionsProps> = ({ entries, dai
 
   if (entries.length === 0 && dailyReflections.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-center text-gray-400 p-4 animate-fade-in">
-        <div>
-          <h2 className="text-2xl font-bold font-display text-white mb-2">Your Reflections</h2>
-          <p>Add some thoughts to your Stream to get started.<br />Reflections about your day will appear here.</p>
+      <div className="h-full flex items-center justify-center text-center p-8 animate-fade-in">
+        <div className="max-w-md space-y-6">
+          {/* Icon with glow */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <SparklesIcon className="w-16 h-16 text-brand-teal" />
+              <div className="absolute inset-0 bg-brand-teal/20 blur-2xl rounded-full" />
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div>
+            <h2 className="text-2xl font-bold font-display text-white mb-2">
+              Your Daily Reflections
+            </h2>
+            <p className="text-gray-400">
+              Add thoughts to your Stream and get AI-powered reflections about your day.
+            </p>
+          </div>
+
+          {/* How it works */}
+          <div className="bg-dark-surface/50 rounded-xl p-4 border border-white/5">
+            <p className="text-sm text-gray-400 mb-2">How it works:</p>
+            <ol className="text-left text-sm text-gray-300 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-brand-teal font-bold">1.</span>
+                <span>Write entries in your Stream</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-brand-teal font-bold">2.</span>
+                <span>Come back here to generate a reflection</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-brand-teal font-bold">3.</span>
+                <span>Get insights about patterns and themes</span>
+              </li>
+            </ol>
+          </div>
         </div>
       </div>
     );

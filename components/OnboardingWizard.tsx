@@ -364,6 +364,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
   return (
     <div className={`h-screen w-screen transition-colors duration-1000 ease-in-out ${bgClass} flex flex-col items-center justify-center p-6 overflow-hidden relative`}>
 
+      {/* Persistent Logo Header */}
+      <div className="absolute top-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
+        <div className="flex items-center gap-2 bg-dark-surface/30 backdrop-blur-sm px-4 py-2 rounded-full border border-white/5">
+          <img src="/mindstream-logo.svg" alt="Mindstream" className="w-8 h-8" />
+          <span className="text-white font-display font-bold text-lg">Mindstream</span>
+        </div>
+      </div>
+
       {/* Step 1: Sanctuary */}
       {step === 'sanctuary' && (
         <div className="text-center animate-fade-in flex flex-col items-center relative z-10">
