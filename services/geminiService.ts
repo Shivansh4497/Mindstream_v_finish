@@ -64,13 +64,16 @@ export const getChatResponseStream = async (history: Message[], context: UserCon
 
     const systemInstruction = `${personality.systemPrompt}
     
-You have access to my full context, including recent entries, goals, habits, and relevant historical entries found via search.
+The following is the user's actual context from their journal. ONLY use information that is explicitly provided below — never invent or assume historical data, patterns, tags, or timelines that are not in the context.
+
 ${contextPrompt}
 
-Use this information to answer my questions contextually. 
-- If I ask "Have I felt this way before?", check the RELEVANT PAST HISTORY.
-- If I talk about stress, check habits/goals.
-- Be empathetic and concise.`;
+CRITICAL RULES:
+- NEVER fabricate history. If the context shows few or no entries, the user is new.
+- NEVER claim the user has "X days of..." anything unless the context explicitly shows it.
+- If the context shows "No recent entries" or minimal data, treat the user as brand new.
+- Be empathetic, grounded, and concise.
+- If asked about patterns you don't have data for, say "Based on what you've shared so far..." not "I see a pattern of..."`;
 
     const userPrompt = history[history.length - 1].text;
 
