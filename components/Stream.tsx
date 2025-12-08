@@ -7,7 +7,7 @@ import { InsightCard as InsightCardComponent } from './InsightCard';
 import { AutoReflectionCard } from './AutoReflectionCard';
 import { TodaysFocusBanner } from './TodaysFocusBanner';
 import { EmptyStreamState } from './EmptyStreamState';
-import { ProactiveNudge } from './ProactiveNudge';
+
 
 interface StreamProps {
   entries: Entry[];
@@ -99,16 +99,7 @@ export const Stream: React.FC<StreamProps> = ({
     <div>
       {todaysIntentions.length > 0 && <TodaysFocusBanner intentions={todaysIntentions} />}
 
-      <div className="px-4 pt-4">
-        {nudges.map(nudge => (
-          <ProactiveNudge
-            key={nudge.id}
-            nudge={nudge}
-            onAccept={onAcceptNudge}
-            onDismiss={onDismissNudge}
-          />
-        ))}
-      </div>
+
 
       <div className="p-4">
         {sortedDates.map(date => {
