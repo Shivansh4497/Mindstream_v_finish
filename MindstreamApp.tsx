@@ -242,12 +242,12 @@ export const MindstreamApp: React.FC = () => {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
             db.logEvent(user.id, 'onboarding_completed', { path: 'guided' });
 
-            if (dest === 'chat' && context && q) {
+            if (dest === 'chat' && context) {
                 console.log('[Onboarding] Going to Chat with context');
-                // Go to Chat with context seeded
+                // Go to Chat with the user's elaboration as their first message
+                // The AI will respond naturally - no need to add extra messages
                 setView('chat');
                 actions.handleSendMessage(context);
-                actions.setMessages(prev => [...prev, { sender: 'ai', text: q }]);
             } else {
                 console.log('[Onboarding] Falling through to Stream. dest:', dest, 'context:', !!context, 'q:', !!q);
                 // Default to Stream for all other cases (including 'stream' destination or missing context)
