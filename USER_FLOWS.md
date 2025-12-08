@@ -1,8 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 6, 2025 (v6.2 - MVP Verification Complete)  
-> **Coverage:** All user interactions, redirections, and navigation paths  
+> **Last Updated:** December 8, 2025 (v6.3 - Onboarding UX + Branding Update)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -85,6 +84,11 @@ Each action logs: `logEvent('insight_modal_action', { action: '...' })`
 **Completion Options:**
 - "Unpack this with AI" → Chat view (with seeded context)
 - Skip → Stream view
+
+**Branding (v6.3):**
+- Persistent Mindstream logo visible on all wizard steps
+- Logo + "Mindstream" text at top of screen
+- Uses `/public/mindstream-logo.svg`
 
 ---
 

@@ -1,12 +1,13 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.2  
-**Last Updated:** December 6, 2025 (MVP Verification Complete)  
+**Version:** 6.3  
+**Last Updated:** December 8, 2025 (Onboarding UX + Branding Update)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
 **Author:** Product Team
 
 ---
+
 
 ## Table of Contents
 
@@ -1705,21 +1706,26 @@ Production URL: mindstream-v1.vercel.app
 - `IntentionsInputBar.tsx` - Intention creation with ETA
 - `ETASelector.tsx` - Deadline preset picker
 
-#### **Interactive Components (9 components)**
-- `OnboardingWizard.tsx` - 7-step onboarding flow
+#### **Interactive Components (11 components)**
+- `OnboardingWizard.tsx` - 7-step onboarding flow **← UPDATED v6.3 (logo header)**
 - `PersonalitySelector.tsx` - AI companion picker
 - `SearchModal.tsx` - Full-text entry search
 - `ThematicModal.tsx` - Tag-based deep dive
 - `EditEntryModal.tsx` - Entry editing
 - `EditHabitModal.tsx` - Habit editing
+- `EditIntentionModal.tsx` - Intention editing with ETA picker
 - `DeleteConfirmationModal.tsx` - Safe deletion
 - `PrivacyModal.tsx` - First-launch privacy message
+- `ReflectionUnlockModal.tsx` - Tier unlock celebration **← NEW v6.2**
 - `LifeAreaDashboard.tsx` - Domain-filtered view
 
 #### **Empty State Components (3 components)**
-- `EmptyStreamState.tsx` - No entries yet
-- `EmptyHabitsState.tsx` - No habits yet
-- `EmptyIntentionsState.tsx` - No intentions yet
+- `EmptyStreamState.tsx` - No entries yet (with guided prompts)
+- `EmptyHabitsState.tsx` - No habits yet (with quick-add)
+- `EmptyIntentionsState.tsx` - No intentions yet (with suggestions)
+
+#### **Loading & Skeleton Components (1 component)** ← **NEW v6.3**
+- `SkeletonLoader.tsx` - Reusable loading placeholders (text, circular, rectangular variants)
 
 #### **Data Visualization (5 components)**
 - `HabitHeatmap.tsx` - GitHub-style completion graph
