@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { LockIcon } from './icons/LockIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ArrowRightIcon } from './icons/ArrowRightIcon';
-import { MindstreamLogo } from './icons/MindstreamLogo';
+// MindstreamLogo is now a static SVG file in public/
 
 interface LandingScreenProps {
     onQuickStart: () => void;
@@ -33,7 +33,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onQuickStart, onGu
                     transition={{ delay: 0.2, duration: 0.5 }}
                     className="inline-flex items-center justify-center w-24 h-24 bg-dark-surface/50 backdrop-blur-sm rounded-2xl mb-8 border border-white/5"
                 >
-                    <MindstreamLogo className="w-14 h-14 text-brand-teal drop-shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
+                    <img src="/mindstream-logo.svg" alt="Mindstream" className="w-14 h-14 drop-shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
                 </motion.div>
 
                 {/* Headline */}

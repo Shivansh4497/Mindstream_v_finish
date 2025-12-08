@@ -3,7 +3,7 @@ import { SearchIcon } from './icons/SearchIcon';
 import { useAuth } from '../context/AuthContext';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { TrashIcon } from './icons/TrashIcon';
-import { MindstreamLogo } from './icons/MindstreamLogo';
+// MindstreamLogo is now a static SVG file in public/
 import * as db from '../services/dbService';
 import { Settings } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearchClick, onSettingsClick, 
   return (
     <header className="flex-shrink-0 bg-brand-indigo/80 backdrop-blur-sm p-4 flex justify-between items-center border-b border-white/10 z-20">
       <div className="flex items-center gap-2">
-        <MindstreamLogo className="w-8 h-8 text-brand-teal" />
+        <img src="/mindstream-logo.svg" alt="Mindstream" className="w-8 h-8" />
         <div>
           <h1 className="text-xl font-bold font-display text-white">Mindstream</h1>
           {subtitle && <p className="text-xs text-gray-400 font-sans -mt-1">{subtitle}</p>}
