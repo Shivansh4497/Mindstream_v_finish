@@ -119,12 +119,20 @@ export interface InstantInsight {
   confidence: number;  // 0.0-1.0 confidence score for quality gating
 }
 
+// Phase 1: Temporal Memory - Similar past moments
+export interface SimilarMoment {
+  entry: Entry;
+  matchType: 'sentiment' | 'tag' | 'keyword';
+  matchScore: number; // 0-1 relevance score
+}
+
 export interface UserContext {
   recentEntries: Entry[];
   pendingIntentions: Intention[];
   activeHabits: Habit[];
   latestReflection: Reflection | null;
   searchResults?: Entry[]; // RAG: Historical entries matching the current conversation
+  similarMoments?: SimilarMoment[]; // Phase 1: Past similar emotional moments
   personalityId?: string;
 }
 

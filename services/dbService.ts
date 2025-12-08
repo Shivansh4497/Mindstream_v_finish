@@ -233,6 +233,106 @@ export const searchEntries = async (userId: string, keywords: string[]): Promise
     return data || [];
 };
 
+/**
+ * PHASE 1: TEMPORAL MEMORY
+ * Find emotionally similar past moments for contextual AI responses.
+ * This enables "Last time you felt this way..." style AI responses.
+ */
+export const findSimilarMoments = async (
+    userId: string,
+    currentSentiment: string | null,
+    currentTags: string[] | null,
+    excludeHours: number = 48
+): Promise<{ entry: Entry; matchType: 'sentiment' | 'tag' | 'keyword'; matchScore: number }[]> => {
+    if (!supabase) return [];
+
+    const results: { entry: Entry; matchType: 'sentiment' | 'tag' | 'keyword'; matchScore: number }[] = [];
+
+    // Calculate cutoff time (exclude recent entries)
+    const cutoffTime = new Date();
+    cutoffTime.setHours(cutoffTime.getHours() - excludeHours);
+    const cutoffISO = cutoffTime.toISOString();
+
+    // Get account creation date to filter out old data
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    try {
+        // 1. Find entries with same sentiment (strongest match)
+        if (currentSentiment) {
+            let sentimentQuery = supabase
+                .from('entries')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('primary_sentiment', currentSentiment)
+                .lt('timestamp', cutoffISO) // Exclude recent
+                .order('timestamp', { ascending: false })
+                .limit(5);
+
+            if (accountCreatedAt) {
+                sentimentQuery = sentimentQuery.gte('timestamp', accountCreatedAt);
+            }
+
+            const { data: sentimentMatches } = await sentimentQuery;
+
+            if (sentimentMatches) {
+                sentimentMatches.forEach((entry, index) => {
+                    results.push({
+                        entry: entry as Entry,
+                        matchType: 'sentiment',
+                        matchScore: 1 - (index * 0.1) // Decay score by recency
+                    });
+                });
+            }
+        }
+
+        // 2. Find entries with overlapping tags
+        if (currentTags && currentTags.length > 0) {
+            let tagQuery = supabase
+                .from('entries')
+                .select('*')
+                .eq('user_id', userId)
+                .lt('timestamp', cutoffISO)
+                .order('timestamp', { ascending: false })
+                .limit(20); // Fetch more to filter client-side
+
+            if (accountCreatedAt) {
+                tagQuery = tagQuery.gte('timestamp', accountCreatedAt);
+            }
+
+            const { data: tagCandidates } = await tagQuery;
+
+            if (tagCandidates) {
+                tagCandidates.forEach((entry: any) => {
+                    const entryTags = entry.tags || [];
+                    const overlap = currentTags.filter((t: string) =>
+                        entryTags.map((et: string) => et.toLowerCase()).includes(t.toLowerCase())
+                    );
+
+                    if (overlap.length > 0) {
+                        // Avoid duplicates from sentiment search
+                        const alreadyAdded = results.some(r => r.entry.id === entry.id);
+                        if (!alreadyAdded) {
+                            results.push({
+                                entry: entry as Entry,
+                                matchType: 'tag',
+                                matchScore: overlap.length / currentTags.length
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+        // Sort by score and limit to top 3
+        results.sort((a, b) => b.matchScore - a.matchScore);
+        return results.slice(0, 3);
+
+    } catch (error) {
+        console.error('[findSimilarMoments] Error:', error);
+        return [];
+    }
+};
+
 
 // Onboarding Functions
 export const addWelcomeEntry = async (userId: string): Promise<void> => {
@@ -913,11 +1013,26 @@ export const getUserContext = async (userId: string): Promise<UserContext> => {
     // Filter out system/welcome entries from context (they shouldn't be used as user input)
     const userEntries = entries.filter(e => !(e.tags && e.tags.includes('welcome')));
 
+    // PHASE 1: TEMPORAL MEMORY - Find similar past moments
+    let similarMoments: { entry: Entry; matchType: 'sentiment' | 'tag' | 'keyword'; matchScore: number }[] = [];
+
+    // Use the most recent entry to find similar moments
+    if (userEntries.length > 0) {
+        const mostRecent = userEntries[0];
+        similarMoments = await findSimilarMoments(
+            userId,
+            mostRecent.primary_sentiment || null,
+            mostRecent.tags || null,
+            48 // Exclude entries from last 48 hours
+        );
+    }
+
     return {
         recentEntries: userEntries,
         pendingIntentions: intentions.filter(i => i.status === 'pending'),
         activeHabits: habits,
         latestReflection: reflections.length > 0 ? reflections[0] : null,
+        similarMoments: similarMoments.length > 0 ? similarMoments : undefined,
         personalityId
     };
 }

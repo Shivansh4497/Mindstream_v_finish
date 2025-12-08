@@ -44,6 +44,23 @@ const buildSystemContext = (context: UserContext): string => {
         contextString += `\n`;
     }
 
+    // PHASE 1: TEMPORAL MEMORY - Similar past moments
+    if (context.similarMoments && context.similarMoments.length > 0) {
+        const similarMomentsSummary = context.similarMoments.map(m => {
+            const date = new Date(m.entry.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            return `- [${m.matchType.toUpperCase()} MATCH] On ${date}, feeling ${m.entry.primary_sentiment}: "${m.entry.text.slice(0, 150)}${m.entry.text.length > 150 ? '...' : ''}"`;
+        }).join('\n');
+
+        contextString += `🕐 SIMILAR PAST MOMENTS (Use these to show temporal awareness and continuity):
+${similarMomentsSummary}
+
+When referencing these, use phrases like:
+- "I remember in [month] you felt similar..."
+- "The last time this came up, you mentioned..."
+- "You've navigated feelings like this before, when..."
+\n\n`;
+    }
+
     if (context.searchResults && context.searchResults.length > 0) {
         const historySummary = context.searchResults.map(e =>
             `- [HISTORICAL] On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: "${e.text}"`
@@ -71,6 +88,9 @@ export const getChatResponseStream = async (history: Message[], context: UserCon
     const personalityId = (context.personalityId as PersonalityId) || DEFAULT_PERSONALITY;
     const personality = getPersonality(personalityId) || getPersonality(DEFAULT_PERSONALITY);
 
+    // Check if temporal memory is available
+    const hasTemporalMemory = context.similarMoments && context.similarMoments.length > 0;
+
     const systemInstruction = `${personality.systemPrompt}
     
 The following is the user's actual context from their journal. ONLY use information that is explicitly provided below — never invent or assume historical data, patterns, tags, or timelines that are not in the context.
@@ -82,7 +102,14 @@ CRITICAL RULES:
 - NEVER claim the user has "X days of..." anything unless the context explicitly shows it.
 - If the context shows "No recent entries" or minimal data, treat the user as brand new.
 - Be empathetic, grounded, and concise.
-- If asked about patterns you don't have data for, say "Based on what you've shared so far..." not "I see a pattern of..."`;
+- If asked about patterns you don't have data for, say "Based on what you've shared so far..." not "I see a pattern of..."
+${hasTemporalMemory ? `
+TEMPORAL MEMORY (USE THIS):
+- When you see "SIMILAR PAST MOMENTS" in the context, REFERENCE them naturally.
+- Say things like "I remember when you felt this way before..." or "The last time you mentioned..."
+- This creates connection and shows you remember the user's journey.
+- Draw on past moments to offer perspective: "You navigated something similar in [month]..."
+` : ''}`;
 
     const userPrompt = history[history.length - 1].text;
 
