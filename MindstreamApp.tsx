@@ -164,23 +164,28 @@ export const MindstreamApp: React.FC = () => {
     }, [view, state.messages, state.aiStatus]);
 
     // Reflection unlock notifications - show modal when first unlocked
+    // IMPORTANT: Only run after user is loaded to ensure stable localStorage keys
     useEffect(() => {
-        if (!state.isDataLoaded || !user) return;
+        // Wait for user and data to be fully loaded
+        if (!user || !state.isDataLoaded) return;
 
-        // Check daily unlock (first entry)
-        if (unlockStatus.dailyUnlocked && !seenDailyUnlock && pendingUnlockType === null) {
+        // Don't show if already showing a modal
+        if (pendingUnlockType !== null) return;
+
+        // Check daily unlock (5 entries = same as insights tab)
+        if (unlockStatus.dailyUnlocked && !seenDailyUnlock) {
             setPendingUnlockType('daily');
             return;
         }
 
         // Check weekly unlock (3 days + 5 entries)
-        if (unlockStatus.weeklyUnlocked && !seenWeeklyUnlock && pendingUnlockType === null) {
+        if (unlockStatus.weeklyUnlocked && !seenWeeklyUnlock) {
             setPendingUnlockType('weekly');
             return;
         }
 
         // Check monthly unlock (14 days + 10 entries)
-        if (unlockStatus.monthlyUnlocked && !seenMonthlyUnlock && pendingUnlockType === null) {
+        if (unlockStatus.monthlyUnlocked && !seenMonthlyUnlock) {
             setPendingUnlockType('monthly');
             return;
         }
