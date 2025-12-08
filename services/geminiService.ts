@@ -35,6 +35,15 @@ const buildSystemContext = (context: UserContext): string => {
 
     let contextString = "";
 
+    // Add explicit entry count to help AI understand user's experience level
+    const entryCount = context.recentEntries.length;
+    contextString += `USER STATUS: This user has ${entryCount} journal entries total.\n`;
+    if (entryCount <= 2) {
+        contextString += `⚠️ THIS IS A BRAND NEW USER - they just started using the app. Do NOT claim they have patterns, history, or "X days of..." anything.\n\n`;
+    } else {
+        contextString += `\n`;
+    }
+
     if (context.searchResults && context.searchResults.length > 0) {
         const historySummary = context.searchResults.map(e =>
             `- [HISTORICAL] On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: "${e.text}"`

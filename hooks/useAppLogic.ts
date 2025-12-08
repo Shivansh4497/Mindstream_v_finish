@@ -503,8 +503,65 @@ export const useAppLogic = () => {
         await db.updateNudgeStatus(nudge.id, 'dismissed');
     };
 
+    /**
+     * BULLETPROOF: Refresh all data from DB.
+     * Called after account reset to ensure UI reflects the clean slate.
+     */
+    const refreshAllData = async () => {
+        if (!user) return;
+
+        console.log('[refreshAllData] Reloading all data from DB');
+
+        // Reset all state to empty immediately
+        setEntries([]);
+        setReflections([]);
+        setIntentions([]);
+        setHabits([]);
+        setHabitLogs([]);
+        setInsights([]);
+        setAutoReflections([]);
+        setNudges([]);
+        setMessages([{ sender: 'ai', text: "Hello! I'm Mindstream. You can ask me anything about your thoughts, feelings, or goals. How can I help you today?" }]);
+        setHasMore(true);
+
+        // Reload from DB
+        try {
+            const [userEntries, userReflections, userIntentions, userHabits, userHabitLogs, userInsights, userAutoReflections, userNudges, userProfile] = await Promise.all([
+                db.getEntries(user.id, 0, PAGE_SIZE),
+                db.getReflections(user.id),
+                db.getIntentions(user.id),
+                db.getHabits(user.id),
+                db.getCurrentPeriodHabitLogs(user.id),
+                db.getInsightCards(user.id),
+                db.getAutoReflections(user.id, 1),
+                db.getPendingNudges(user.id),
+                db.getProfile(user.id)
+            ]);
+
+            if (isMounted.current) {
+                setEntries(userEntries);
+                if (userEntries.length < PAGE_SIZE) {
+                    setHasMore(false);
+                }
+                setReflections(userReflections);
+                setIntentions(userIntentions);
+                setHabits(userHabits);
+                setHabitLogs(userHabitLogs);
+                setInsights(userInsights);
+                setAutoReflections(userAutoReflections);
+                setNudges(userNudges);
+                if (userProfile?.created_at) {
+                    setAccountCreatedAt(userProfile.created_at);
+                }
+            }
+            console.log('[refreshAllData] Data reload complete');
+        } catch (error) {
+            console.error('[refreshAllData] Error reloading data:', error);
+        }
+    };
+
     return {
         state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight, accountCreatedAt },
-        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight, setIntentions }
+        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight, setIntentions, refreshAllData }
     };
 };

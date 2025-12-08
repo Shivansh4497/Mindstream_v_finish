@@ -230,7 +230,16 @@ export const MindstreamApp: React.FC = () => {
                     setOnboardingStep(ONBOARDING_QUICK_START);
                     db.logEvent(user.id, 'onboarding_completed', { path: 'quick_start' });
                 }}
-                onGuidedSetup={() => setOnboardingStep(2)} // 2 = start guided wizard
+                onGuidedSetup={async () => {
+                    // BULLETPROOF: Reset all user data on guided setup to ensure clean slate
+                    console.log('[Onboarding] Starting guided setup - resetting account data');
+                    await db.resetAccountData(user.id);
+
+                    // Refresh all state to reflect the clean slate
+                    await actions.refreshAllData();
+
+                    setOnboardingStep(2); // 2 = start guided wizard
+                }}
             />
         );
     }

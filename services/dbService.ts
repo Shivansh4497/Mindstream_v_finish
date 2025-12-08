@@ -42,6 +42,50 @@ export const clearAccountCreatedAtCache = (userId: string) => {
     accountCreatedAtCache.delete(userId);
 };
 
+/**
+ * BULLETPROOF: Reset all user data on onboarding.
+ * This ensures a 100% clean slate - no old entries, habits, or reflections
+ * can contaminate the new user experience.
+ */
+export const resetAccountData = async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
+
+    try {
+        console.log('[resetAccountData] Starting full account reset for user:', userId);
+
+        // Delete all user data (order matters for foreign key constraints)
+        await (supabase as any).from('habit_logs').delete().eq('user_id', userId);
+        await (supabase as any).from('habits').delete().eq('user_id', userId);
+        await (supabase as any).from('intentions').delete().eq('user_id', userId);
+        await (supabase as any).from('reflections').delete().eq('user_id', userId);
+        await (supabase as any).from('entries').delete().eq('user_id', userId);
+        await (supabase as any).from('proactive_nudges').delete().eq('user_id', userId);
+        await (supabase as any).from('chart_insights').delete().eq('user_id', userId);
+        await (supabase as any).from('analytics_events').delete().eq('user_id', userId);
+
+        // Update profile.created_at to NOW - this is the key for timestamp filtering
+        const now = new Date().toISOString();
+        const { error: profileError } = await (supabase as any)
+            .from('profiles')
+            .update({ created_at: now })
+            .eq('id', userId);
+
+        if (profileError) {
+            console.error('[resetAccountData] Error updating profile.created_at:', profileError);
+            // Don't fail completely - data was still deleted
+        }
+
+        // Clear the cache so new created_at is fetched
+        clearAccountCreatedAtCache(userId);
+
+        console.log('[resetAccountData] Account reset complete. New created_at:', now);
+        return true;
+    } catch (e) {
+        console.error('[resetAccountData] Exception during reset:', e);
+        return false;
+    }
+};
+
 export const createProfile = async (user: User): Promise<Profile | null> => {
     if (!supabase) throw new Error("Supabase client not initialized");
     // Use upsert to handle account recreation with same email (prevents 409 conflict)
