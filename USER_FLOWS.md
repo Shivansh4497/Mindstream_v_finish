@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 8, 2025 (v6.3 - Onboarding UX + Branding Update)  
+> **Last Updated:** December 9, 2025 (v6.4 - MVP Hardening: Account Reset, AI Quality, Streamlined Onboarding)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -72,18 +72,28 @@ Each action logs: `logEvent('insight_modal_action', { action: '...' })`
 ### 2.3 Guided Setup Path (Recommended)
 **Component:** [OnboardingWizard.tsx](file:///Users/director/Mindstream_v1/components/OnboardingWizard.tsx)
 
+**NEW v6.4 - Account Reset on Start:**
+- When user clicks "Guided Setup", ALL existing data is deleted
+- `resetAccountData()` clears: entries, habits, intentions, reflections, habit_logs, chart_insights, analytics
+- `profile.created_at` updated to NOW() - this is the key for all timestamp filtering
+- Ensures 100% clean slate with no data contamination
+
 | Step | Name | User Action |
 |------|------|-------------|
 | 1 | The Sanctuary | View privacy message → "Enter" |
 | 2 | The Spark | Select emotion (8 options: Anxious, Excited, Overwhelmed, Calm, Tired, Inspired, Frustrated, Grateful) |
 | 3 | The Container | Select life area (Work, Relationships, Health, Self, Money) |
-| 4 | The Friction | Select trigger (context-specific to life area) |
+| 4 | The Friction | Select trigger (NEW: 8x5 sentiment-aware matrix - 40 unique trigger sets) |
 | 5 | Elaboration | Write/speak about the issue + Select AI personality |
-| 6 | AI Analysis | View insight + Accept/reject suggested habits & intentions |
+| 6 | Processing | AI analyzes and generates insight |
+| 7 | Awe | View insight + CTA buttons |
 
 **Completion Options:**
-- "Unpack this with AI" → Chat view (with seeded context)
-- Skip → Stream view
+- "Unpack this with Mindstream" → Chat view (with seeded context)
+- "Go to my Stream" → Stream view
+
+**REMOVED in v6.4:**
+- ❌ Suggestions step (habits/goals) - removed from onboarding flow
 
 **Branding (v6.3):**
 - Persistent Mindstream logo visible on all wizard steps
@@ -127,7 +137,6 @@ Each action logs: `logEvent('insight_modal_action', { action: '...' })`
 ```
 Stream View
 ├── TodaysFocusBanner (if daily intentions exist)
-├── ProactiveNudges (pending nudges)
 ├── Feed Items (grouped by date):
 │   ├── EntryCards
 │   ├── InsightCards
@@ -175,19 +184,18 @@ Stream View
 | intention | Creates intention in Goals view |
 | reflection | Redirects to Chat with context |
 
-### 4.4 Proactive Nudge Interactions
+### 4.4 Proactive Nudge Interactions (REMOVED in v6.4)
 **Component:** [ProactiveNudge.tsx](file:///Users/director/Mindstream_v1/components/ProactiveNudge.tsx)
 
-**Nudge Types:**
+> **⚠️ REMOVED:** Proactive nudges have been removed from the Stream view in v6.4.
+> **Reason:** Low value in MVP - showed duplicate/generic messages that took up screen space.
+> **Component preserved:** The ProactiveNudge.tsx component still exists for potential future use.
+
+**Original Nudge Types (for reference):**
 - `mood_decline` - 3+ negative entries in a row
 - `habit_abandonment` - Breaking a 7+ day streak
 - `intention_stagnation` - Goals pending 7+ days
 - `positive_reinforcement` - Celebrate streaks
-
-| Button | Action |
-|--------|--------|
-| "Let's Chat" | Redirects to Chat view |
-| "Dismiss" | Hides nudge, updates status |
 
 ---
 

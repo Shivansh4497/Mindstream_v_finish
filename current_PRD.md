@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.3  
-**Last Updated:** December 8, 2025 (Onboarding UX + Branding Update)  
+**Version:** 6.4  
+**Last Updated:** December 9, 2025 (MVP Hardening: Account Reset, AI Quality, Streamlined Onboarding)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -152,15 +152,17 @@ Mindstream is structured around **6 interconnected pillars** feeding a central d
   - Assigns emoji
 - **Entry Suggestions:** AI generates 3 actionable follow-ups (e.g., "Start a meditation habit")
 - **Thematic Reflection:** Click any tag to generate an AI deep-dive on that theme
-- **Proactive Nudges:** Subtle banners alert users to detected patterns
+- **Today's Focus Banner:** Shows daily intentions at top of Stream
 
 **UI Pattern:**
 - Entries grouped by date (Today, Yesterday, Nov 19...)
 - Each entry shows emoji, title, sentiment badge, tags
 - Click to expand for full text + suggestions
-- Nudge banner appears at top when patterns detected
 - Microphone button in input bar for voice dictation
 - "Listening..." placeholder during recording
+
+**REMOVED in v6.4:**
+- ❌ Proactive Nudges - removed from MVP (low value, duplicate/generic messages)
 
 ---
 
@@ -395,47 +397,55 @@ Suggestions must:
 
 ## 5. User Flows
 
-### 5.1 Onboarding Flow: "The Golden Path"
+### 5.1 Onboarding Flow: "The Golden Path" (v6.4 Streamlined)
 
 **Goal:** Deliver an "Awe Moment" within 60 seconds without making user face a blank page.
 
-**Steps:**
+**NEW v6.4 - Clean Slate Guarantee:**
+- When user starts Guided Setup, ALL existing data is deleted
+- `profile.created_at` is updated to NOW()
+- Ensures 100% fresh start with no data contamination from previous sessions
+
+**Steps (7 total - streamlined from 8 in v6.3):**
 
 1. **The Sanctuary (Privacy)**
    - Minimalist lock icon
    - Message: *"Your thoughts. Your vault."*
    
 2. **The Spark (Emotion)**
-   - Select granular emotion (13 options: Joyful, Anxious, Reflective...)
-   - Background gradient shifts to match mood
+   - Select from 8 sentiments: Anxious, Excited, Overwhelmed, Calm, Tired, Inspired, Frustrated, Grateful
+   - Background gradient shifts to match mood (monochromatic radial gradients)
    
 3. **The Container (Life Area)**
    - Select domain: Work | Relationships | Health | Self | Money
    
 4. **The Friction (Trigger)**
-   - Context-aware triggers based on area
-   - Example: Work → "Imposter Syndrome" | "Deadline Pressure"
+   - NEW v6.4: Full 8x5 sentiment-aware trigger matrix
+   - 40 unique trigger sets based on sentiment + life area combination
+   - Example: Anxious + Work → "Deadlines, Performance Review, Job Security, Overwhelming Tasks, Imposter Syndrome"
    
 5. **Elaboration**
-   - Dynamic question: *"What is making you doubt your value?"*
+   - Dynamic question based on sentiment polarity
+   - Positive sentiments: *"What's on your mind?"*
+   - Negative sentiments: *"What's bringing you this feeling?"*
    - **Voice or text input** with microphone button
-   - Floating thought bubbles in background (mood-matched)
+   - Personality selection integrated in this step
    
-6. **The Companion**
-   - Choose AI Personality:
-     - 🏛️ Stoic Companion (wise, direct)
-     - 💙 Empathetic Friend (warm, validating)
-     - 💪 Tough Coach (challenging, accountable)
-     - 🔍 Curious Explorer (questioning, analytical)
-     - 🎉 Cheerleader (enthusiastic, celebratory)
-   - Shows sample responses for each
+6. **Processing**
+   - Visual feedback with animated processing messages
+   - Entry saved to database
+   - AI generates instant insight
    
 7. **The Awe Moment**
-   - AI analyzes: Sentiment + Area + Trigger + Text
-   - Typewriter effect reveals insight card (in selected personality's voice)
-   - **Smart Suggestions:** 2-3 AI-generated habits and intentions
-   - Accept/reject each suggestion with one tap
-   - Call-to-action: *"Unpack this with AI"* → Launches Chat with full context
+   - Typewriter effect reveals insight card
+   - Follow-up reflection question displayed
+   - **Call-to-actions:**
+     - *"Unpack this with Mindstream"* → Chat with full context
+     - *"Go to my Stream"* → Stream view
+
+**REMOVED in v6.4:**
+- ❌ Suggestions step (habits/goals) - moved to post-onboarding discovery
+- Reason: Too early in funnel, low context = generic suggestions
 
 ---
 
@@ -1185,13 +1195,18 @@ Example: "Three days of 'anxious' tags. What's the pattern here?"
 4. Relevant entries injected into system prompt
 5. AI responds with informed context (in selected personality's voice)
 
+**NEW v6.4 - Date Filtering:**
+- All search results filtered by `profile.created_at` (account creation timestamp)
+- Prevents retrieval of entries from before user's current account session
+- Uses `getAccountCreatedAt()` with caching for performance
+
 **Example:**
 ```
 User: "Why do I procrastinate?"
 
 Keywords extracted: ["procrastinate", "delay", "avoidance"]
 
-Search results:
+Search results (filtered by created_at):
 - "Feeling overwhelmed by project" (Nov 20)
 - "Avoided starting proposal" (Nov 18)
 
@@ -1200,7 +1215,54 @@ Context injected:
 Based on their history, provide insight."
 ```
 
-### 8.4 Pattern Detection AI
+### 8.4 AI Quality Improvements (NEW v6.4)
+
+**Problem:** AI was fabricating historical context for new users (e.g., "Three days of anxious tags" when user had only one entry).
+
+**Root Causes Identified:**
+1. `searchEntries()` was not filtering by `profile.created_at`, allowing old test data to be returned
+2. Date formatting was ambiguous (`8/12/2025` interpreted as Aug 12 instead of Dec 8)
+3. System prompts lacked explicit anti-hallucination instructions
+
+**Solutions Implemented:**
+
+#### 1. Anti-Hallucination System Prompt
+Added explicit instructions to `geminiService.ts`:
+```
+CRITICAL RULES:
+- NEVER fabricate history. If the context shows few or no entries, the user is new.
+- NEVER claim the user has "X days of..." anything unless the context explicitly shows it.
+- If the context shows "No recent entries" or minimal data, treat the user as brand new.
+- If asked about patterns you don't have data for, say "Based on what you've shared so far..." not "I see a pattern of..."
+```
+
+#### 2. User Status Indicator
+Added explicit entry count to context:
+```
+USER STATUS: This user has 1 journal entries total.
+⚠️ THIS IS A BRAND NEW USER - they just started using the app.
+Do NOT claim they have patterns, history, or "X days of..." anything.
+```
+
+#### 3. Unambiguous Date Formatting
+Changed from `toLocaleDateString()` (ambiguous: `8/12/2025`) to:
+```typescript
+toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+// Output: "December 8, 2025"
+```
+
+#### 4. Account Reset on Onboarding
+When user starts Guided Setup:
+```typescript
+resetAccountData(userId):
+  - DELETE all entries, habits, intentions, reflections
+  - DELETE all habit_logs, chart_insights, analytics
+  - UPDATE profile.created_at = NOW()
+  - CLEAR accountCreatedAt cache
+```
+This guarantees 100% clean slate with no data contamination.
+
+### 8.5 Pattern Detection AI (Deferred in v6.4)
 
 **Purpose:** Automatically identify behavioral patterns without user input.
 
