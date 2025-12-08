@@ -436,10 +436,10 @@ Examples:
 - "Even on a tough day, you showed up. That's what matters!"
 - "Look at that streak! You're unstoppable! 🔥"
 
-Remember: Genuine enthusiasm is contagious. Celebrate progress, not perfection.`,traits:{directness:.6,empathy:.8,humor:.8,challenge:.4},sampleResponses:{greeting:"Hey there, champion! What's happening today?",encouragement:"You're crushing it! Three days in a row! 🔥",challenge:"I believe in you! What's one small step you can take right now?"}}},RL=e=>qV[e],fme=()=>Object.values(qV),PL="stoic",dme=async e=>{try{return(await ur("extract-keywords",{query:e})).keywords||[]}catch(t){return console.warn("Failed to extract keywords:",t),[]}},hme=e=>{const t=e.recentEntries.slice(0,10).map(a=>`- On ${new Date(a.timestamp).toLocaleDateString()}, feeling ${a.primary_sentiment}, I wrote: "${a.text}"`).join(`
+Remember: Genuine enthusiasm is contagious. Celebrate progress, not perfection.`,traits:{directness:.6,empathy:.8,humor:.8,challenge:.4},sampleResponses:{greeting:"Hey there, champion! What's happening today?",encouragement:"You're crushing it! Three days in a row! 🔥",challenge:"I believe in you! What's one small step you can take right now?"}}},RL=e=>qV[e],fme=()=>Object.values(qV),PL="stoic",dme=async e=>{try{return(await ur("extract-keywords",{query:e})).keywords||[]}catch(t){return console.warn("Failed to extract keywords:",t),[]}},hme=e=>{const t=e.recentEntries.slice(0,10).map(a=>`- On ${new Date(a.timestamp).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}, feeling ${a.primary_sentiment}, I wrote: "${a.text}"`).join(`
 `),n=e.pendingIntentions.slice(0,10).map(a=>`- My [${a.timeframe}] goal is: "${a.text}"`).join(`
 `),r=e.activeHabits.slice(0,15).map(a=>`- Habit: ${a.name} (${a.category}, Streak: ${a.current_streak})`).join(`
-`);let i="";if(e.searchResults&&e.searchResults.length>0){const a=e.searchResults.map(s=>`- [HISTORICAL] On ${new Date(s.timestamp).toLocaleDateString()}: "${s.text}"`).join(`
+`);let i="";if(e.searchResults&&e.searchResults.length>0){const a=e.searchResults.map(s=>`- [HISTORICAL] On ${new Date(s.timestamp).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}: "${s.text}"`).join(`
 `);i+=`RELEVANT PAST HISTORY (Use this to answer specific questions about the past):
 ${a}
 

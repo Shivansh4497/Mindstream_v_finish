@@ -20,7 +20,7 @@ const buildSystemContext = (context: UserContext): string => {
     // Optimize Context Window: Limit tokens by slicing arrays
     const recentEntriesSummary = context.recentEntries
         .slice(0, 10) // Limit to 10 most recent
-        .map(e => `- On ${new Date(e.timestamp).toLocaleDateString()}, feeling ${e.primary_sentiment}, I wrote: "${e.text}"`)
+        .map(e => `- On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, feeling ${e.primary_sentiment}, I wrote: "${e.text}"`)
         .join('\n');
 
     const intentionsSummary = context.pendingIntentions
@@ -37,7 +37,7 @@ const buildSystemContext = (context: UserContext): string => {
 
     if (context.searchResults && context.searchResults.length > 0) {
         const historySummary = context.searchResults.map(e =>
-            `- [HISTORICAL] On ${new Date(e.timestamp).toLocaleDateString()}: "${e.text}"`
+            `- [HISTORICAL] On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: "${e.text}"`
         ).join('\n');
         contextString += `RELEVANT PAST HISTORY (Use this to answer specific questions about the past):\n${historySummary}\n\n`;
     }
