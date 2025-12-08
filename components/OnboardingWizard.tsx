@@ -47,12 +47,64 @@ const lifeAreas: { id: LifeArea; label: string; icon: string }[] = [
   { id: 'Finance', label: 'Money', icon: '💰' },
 ];
 
-const triggers: Record<LifeArea, string[]> = {
-  Work: ['Deadlines', 'Conflict', 'Burnout', 'Imposter Syndrome', 'Boredom'],
-  Relationships: ['Misunderstanding', 'Distance', 'Boundaries', 'Loneliness', 'Trust'],
-  Health: ['Fatigue', 'Sleep', 'Diet', 'Body Image', 'Pain'],
-  Self: ['Purpose', 'Motivation', 'Self-Worth', 'Regret', 'Growth'],
-  Finance: ['Debt', 'Budgeting', 'Spending', 'Future Security', 'Income'],
+// Full 8x5 trigger matrix - each sentiment × life area has curated triggers
+const triggers: Record<Sentiment, Record<LifeArea, string[]>> = {
+  Anxious: {
+    Work: ['Deadlines', 'Performance Review', 'Job Security', 'Overwhelming Tasks', 'Imposter Syndrome'],
+    Relationships: ['Conflict', 'Miscommunication', 'Fear of Rejection', 'Trust Issues', 'Growing Apart'],
+    Health: ['Health Worries', 'Sleep Problems', 'Panic Symptoms', 'Medical Concerns', 'Energy Drain'],
+    Self: ['Self-Doubt', 'Future Uncertainty', 'Overthinking', 'Fear of Failure', 'Feeling Stuck'],
+    Finance: ['Bills', 'Debt Stress', 'Income Uncertainty', 'Unexpected Expenses', 'Financial Security']
+  },
+  Excited: {
+    Work: ['New Opportunity', 'Promotion', 'Creative Project', 'Recognition', 'Career Growth'],
+    Relationships: ['New Connection', 'Deepening Bond', 'Quality Time', 'Shared Adventure', 'Love'],
+    Health: ['Fitness Goals', 'New Routine', 'Energy Boost', 'Healthy Changes', 'Personal Best'],
+    Self: ['New Beginning', 'Personal Growth', 'Creative Expression', 'Learning Journey', 'Self-Discovery'],
+    Finance: ['Raise', 'Investment Win', 'Financial Goal', 'New Income', 'Big Purchase']
+  },
+  Overwhelmed: {
+    Work: ['Too Many Tasks', 'Competing Priorities', 'No Boundaries', 'Constant Demands', 'Burnout Risk'],
+    Relationships: ['Too Many Obligations', 'Emotional Drain', 'People Pleasing', 'No Me-Time', 'Feeling Spread Thin'],
+    Health: ['No Time for Self-Care', 'Exhaustion', 'Stress Symptoms', 'Skipping Basics', 'Running on Empty'],
+    Self: ['Lost Sense of Self', 'No Direction', 'Information Overload', 'Decision Fatigue', 'Scattered Focus'],
+    Finance: ['Bills Piling Up', 'Budget Chaos', 'Multiple Debts', 'Financial Juggling', 'Money Stress']
+  },
+  Calm: {
+    Work: ['Productive Flow', 'Clear Priorities', 'Work-Life Balance', 'Meaningful Progress', 'Team Harmony'],
+    Relationships: ['Deep Connection', 'Peaceful Moments', 'Understanding', 'Gratitude for Others', 'Stable Ground'],
+    Health: ['Mindfulness', 'Rest & Recovery', 'Body Awareness', 'Balanced Routine', 'Inner Peace'],
+    Self: ['Clarity', 'Self-Acceptance', 'Present Moment', 'Content Reflection', 'Grounded Feeling'],
+    Finance: ['Financial Stability', 'Savings Progress', 'Budget on Track', 'Peace of Mind', 'Secure Feeling']
+  },
+  Tired: {
+    Work: ['Long Hours', 'Burnout', 'No Recovery Time', 'Monotonous Tasks', 'Pushing Through'],
+    Relationships: ['No Energy for Others', 'Withdrawing', 'Feeling Distant', 'Neglecting Connections', 'Too Drained to Engage'],
+    Health: ['Sleep Deficit', 'Physical Fatigue', 'Low Motivation', 'Body Signals', 'Running on Fumes'],
+    Self: ['Mental Exhaustion', 'Loss of Interest', 'Going Through Motions', 'Need for Rest', 'Empty Tank'],
+    Finance: ['Too Tired to Budget', 'Stress Spending', 'Financial Neglect', 'Autopilot Purchases', 'Money Worries Adding Up']
+  },
+  Inspired: {
+    Work: ['Creative Vision', 'New Ideas', 'Purpose-Driven Work', 'Mentorship', 'Impact'],
+    Relationships: ['Meaningful Conversations', 'Shared Dreams', 'Inspiring People', 'Collective Vision', 'Growing Together'],
+    Health: ['Wellness Journey', 'Mind-Body Connection', 'Transformation', 'Peak Performance', 'Vibrant Energy'],
+    Self: ['Life Purpose', 'Creative Flow', 'Spiritual Growth', 'Personal Mission', 'Limitless Potential'],
+    Finance: ['Building Wealth', 'Financial Freedom', 'Entrepreneurial Spirit', 'Smart Investments', 'Abundance Mindset']
+  },
+  Frustrated: {
+    Work: ['Blocked Progress', 'Unfair Treatment', 'Micromanagement', 'Lack of Recognition', 'Office Politics'],
+    Relationships: ['Repeated Patterns', 'Feeling Unheard', 'Broken Promises', 'Unmet Expectations', 'Communication Walls'],
+    Health: ['Slow Progress', 'Setbacks', 'Stubborn Symptoms', 'Discipline Struggles', 'Body Not Cooperating'],
+    Self: ['Self-Sabotage', 'Stuck Patterns', 'Wasted Potential', 'Inner Critic', 'Lack of Progress'],
+    Finance: ['Living Paycheck to Paycheck', 'Unexpected Setbacks', 'Goals Out of Reach', 'Unfair System', 'Falling Behind']
+  },
+  Grateful: {
+    Work: ['Supportive Team', 'Meaningful Work', 'Growth Opportunities', 'Work Wins', 'Good Leadership'],
+    Relationships: ['Loved Ones', 'Deep Friendships', 'Family Bonds', 'Acts of Kindness', 'Feeling Supported'],
+    Health: ['Good Health', 'Capable Body', 'Energy', 'Recovery', 'Wellness Progress'],
+    Self: ['Personal Growth', 'Lessons Learned', 'Inner Strength', 'Life Journey', 'Present Blessings'],
+    Finance: ['Financial Progress', 'Having Enough', 'Opportunities', 'Security', 'Abundance']
+  }
 };
 
 // Voice Recognition Setup
@@ -446,13 +498,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       )}
 
       {/* Step 4: Friction */}
-      {step === 'friction' && selectedArea && (
+      {step === 'friction' && selectedArea && selectedSentiment && (
         <div className="flex flex-col items-center w-full animate-fade-in relative z-10">
           <h2 className="text-2xl md:text-3xl font-bold font-display text-white mb-8 text-center">
-            What specific theme is weighing on you?
+            {['Excited', 'Calm', 'Inspired', 'Grateful'].includes(selectedSentiment)
+              ? "What's bringing you this feeling?"
+              : "What's on your mind?"}
           </h2>
           <div className="flex flex-wrap justify-center gap-3 max-w-2xl w-full">
-            {triggers[selectedArea].map((trigger) => (
+            {triggers[selectedSentiment][selectedArea].map((trigger) => (
               <button
                 key={trigger}
                 onClick={() => handleTriggerSelect(trigger)}
