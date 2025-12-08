@@ -163,15 +163,24 @@ export const searchEntries = async (userId: string, keywords: string[]): Promise
 
     const searchQuery = keywords.join(' or ');
 
-    const { data, error } = await supabase
+    // Get account creation date to filter out entries from before install
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    let query = supabase
         .from('entries')
         .select('*')
         .eq('user_id', userId)
         .textSearch('text', searchQuery, {
             type: 'websearch',
             config: 'english'
-        })
-        .limit(10);
+        });
+
+    // Filter out entries from before account creation (e.g., test data, previous accounts)
+    if (accountCreatedAt) {
+        query = query.gte('timestamp', accountCreatedAt);
+    }
+
+    const { data, error } = await query.limit(10);
 
     if (error) {
         console.error("Error searching entries:", error);
