@@ -33,7 +33,7 @@ export const AutoReflectionCard: React.FC<AutoReflectionCardProps> = ({ reflecti
 
             {reflection.suggestions && reflection.suggestions.length > 0 && (
                 <div className="space-y-2 pt-3 border-t border-white/10">
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">AI Suggestions</p>
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Suggestions</p>
                     {reflection.suggestions.map((suggestion, i) => (
                         <div key={i} className="flex items-start gap-2 py-2 px-3 bg-white/5 rounded hover:bg-white/10 transition-colors">
                             <span className="text-brand-teal mt-0.5">→</span>

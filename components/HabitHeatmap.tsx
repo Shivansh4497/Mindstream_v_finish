@@ -80,7 +80,7 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ habit, logs, days = 
             {insight && (
                 <div className="mt-3 p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                     <p className="text-xs text-purple-300 leading-relaxed">
-                        <strong>💡 AI Insight:</strong> {insight}
+                        <strong>💡 Insight:</strong> {insight}
                     </p>
                 </div>
             )}

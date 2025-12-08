@@ -52,7 +52,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
                 <div className="space-y-12">
                     <section>
                         <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-brand-teal mb-2">AI Companion</h2>
+                            <h2 className="text-2xl font-bold text-brand-teal mb-2">Mindstream Companion</h2>
                             <p className="text-gray-400">Choose the personality that best fits your thinking style.</p>
                         </div>
 

@@ -65,7 +65,7 @@ export const DailyReflections: React.FC<DailyReflectionsProps> = ({ entries, dai
               Your Daily Reflections
             </h2>
             <p className="text-gray-400">
-              Add thoughts to your Stream and get AI-powered reflections about your day.
+              Add thoughts to your Stream and get personalized reflections about your day.
             </p>
           </div>
 

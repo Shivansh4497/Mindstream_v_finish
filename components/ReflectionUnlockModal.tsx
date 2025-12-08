@@ -19,7 +19,7 @@ const REFLECTION_CONFIG: Record<ReflectionType, {
     daily: {
         icon: <Sparkles className="w-8 h-8" />,
         title: 'Daily Reflection Unlocked!',
-        description: 'You can now generate AI-powered summaries of your daily thoughts and patterns.',
+        description: 'You can now generate personalized summaries of your daily thoughts and patterns.',
         color: 'from-amber-500 to-orange-500'
     },
     weekly: {

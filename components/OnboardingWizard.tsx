@@ -436,7 +436,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
             What you write here is seen only by you.
           </p>
           <p className="text-gray-500 text-sm max-w-sm mb-8">
-            ✨ AI helps organize your thoughts and generate insights.
+            ✨ Mindstream helps organize your thoughts and generate insights.
             Your data never leaves our secure servers.
           </p>
           <button
@@ -672,7 +672,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
                 className="w-full flex items-center justify-center gap-2 bg-brand-teal text-brand-indigo font-bold py-4 rounded-xl hover:bg-teal-300 transition-all shadow-lg"
               >
                 <ChatBubbleIcon className="w-5 h-5" />
-                Unpack this with AI
+                Unpack this with Mindstream
               </button>
               <button
                 onClick={() => onComplete('stream')}

@@ -80,7 +80,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
           </h3>
           {isUnprocessed && (
             <div className="text-xs text-gray-400 mt-1 italic">
-              AI processing unavailable. Saved as draft.
+              Processing unavailable. Saved as draft.
             </div>
           )}
         </div>
@@ -90,7 +90,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
             <button
               onClick={() => setIsSuggestionsOpen(!isSuggestionsOpen)}
               className={`p-2 rounded-full transition-all duration-300 ${isSuggestionsOpen ? 'bg-brand-teal/20 text-brand-teal rotate-12' : 'text-brand-teal hover:bg-brand-teal/10 hover:scale-110 animate-pulse'}`}
-              aria-label="View AI Suggestions"
+              aria-label="View Suggestions"
             >
               <SparklesIcon className="w-5 h-5" />
             </button>
