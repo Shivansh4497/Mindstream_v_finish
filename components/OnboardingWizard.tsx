@@ -17,7 +17,7 @@ interface OnboardingWizardProps {
   onComplete: (destination: 'stream' | 'chat', initialContext?: string, aiQuestion?: string) => void;
 }
 
-type Step = 'sanctuary' | 'personality' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'suggestions' | 'awe';
+type Step = 'sanctuary' | 'personality' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'awe';
 type Sentiment = 'Anxious' | 'Excited' | 'Overwhelmed' | 'Calm' | 'Tired' | 'Inspired' | 'Frustrated' | 'Grateful';
 type LifeArea = 'Work' | 'Relationships' | 'Health' | 'Self' | 'Finance';
 
@@ -355,21 +355,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
         primary_sentiment: selectedSentiment as any,
       });
 
-      // Generate suggestions
-      try {
-        const generatedSuggestions = await generateOnboardingSuggestions(entryText);
-        setSuggestions(generatedSuggestions);
-
-        // Skip suggestions step if both arrays are empty
-        if (generatedSuggestions.habits.length === 0 && generatedSuggestions.intentions.length === 0) {
-          setStep('awe');
-        } else {
-          setStep('suggestions');
-        }
-      } catch (error) {
-        console.error('Error generating suggestions:', error);
-        setStep('awe'); // Skip to end if error
-      }
+      // Skip straight to the insight moment (no suggestions step)
+      setStep('awe');
     } catch (error) {
       console.error('Error saving entry:', error);
       setIsProcessing(false);
@@ -590,54 +577,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
       )}
 
       {/* Step 7: Suggestions */}
-      {step === 'suggestions' && suggestions && (
-        <div className="w-full max-w-4xl px-6 animate-fade-in relative z-10 h-full overflow-y-auto py-10">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-display font-bold text-white mb-3">
-              I noticed a few things...
-            </h2>
-            <p className="text-gray-400 text-lg">
-              Based on your thoughts, here are some habits and intentions that might help.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="space-y-4">
-              <h3 className="text-brand-teal font-bold uppercase tracking-wider text-sm">Suggested Habits</h3>
-              {suggestions.habits.map((habit, idx) => (
-                <OnboardingSuggestionCard
-                  key={`habit-${idx}`}
-                  suggestion={{ ...habit, type: 'habit' }}
-                  onAccept={handleAcceptSuggestion}
-                  onReject={() => { }}
-                />
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-brand-teal font-bold uppercase tracking-wider text-sm">Suggested Intentions</h3>
-              {suggestions.intentions.map((intention, idx) => (
-                <OnboardingSuggestionCard
-                  key={`intention-${idx}`}
-                  suggestion={{ ...intention, type: 'intention' }}
-                  onAccept={handleAcceptSuggestion}
-                  onReject={() => { }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            <button
-              onClick={handleCompleteSuggestions}
-              className="group flex items-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:scale-105 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-            >
-              Continue
-              <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Step 8: Awe (Typewriter Reveal) */}
       {step === 'awe' && insight && (
