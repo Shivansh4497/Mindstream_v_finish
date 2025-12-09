@@ -461,7 +461,29 @@ ${n||"No active goals."}
 `,i+=`CONTEXT from my active habits:
 ${r||"No habits."}
 
-`,e.latestReflection&&(i+=`CONTEXT: My latest reflection was: "${e.latestReflection.summary}"`),i},pme=async(e,t)=>{var b,_;const n=hme(t),r=t.personalityId||IL,i=DL(r)||DL(IL),a=t.similarMoments&&t.similarMoments.length>0,s=t.pendingIntentions.length>0,l=t.activeHabits.length>0;t.recentEntries.length;const c=s||l||a,f=[];s&&f.push(`Goals: "${(b=t.pendingIntentions[0])==null?void 0:b.text}"`),l&&f.push(`Habits: "${(_=t.activeHabits[0])==null?void 0:_.name}"`),a&&f.push("Past moments available");const h=`${i.systemPrompt}
+`,e.latestReflection&&(i+=`CONTEXT: My latest reflection was: "${e.latestReflection.summary}"
+
+`),i+=`
+🎯 USING THE CONTEXT ABOVE — BALANCE IS KEY
+
+ONLY reference their data when there's a CLEAR SEMANTIC MATCH:
+✓ User says "I feel lazy" + has entry about "deadline stress" → These connect, mention it gently
+✗ User says "I feel lazy" + has entry about "groceries" → No connection, don't mention
+
+WHEN TO CONNECT:
+- Their current feeling clearly relates to something in their entries/goals/habits
+- They're stuck and their own data could unlock insight
+- The connection feels NATURAL, not forced
+
+WHEN TO STAY QUIET:
+- No clear semantic alignment
+- Bringing it up would feel like "reading their diary at them"
+- They just need to be heard, not analyzed
+- You're not sure if it connects
+
+THE GOAL: Feel like you KNOW them when it matters, not like you're constantly cross-referencing.
+If in doubt, just listen.
+`,i},pme=async(e,t)=>{var b,_;const n=hme(t),r=t.personalityId||IL,i=DL(r)||DL(IL),a=t.similarMoments&&t.similarMoments.length>0,s=t.pendingIntentions.length>0,l=t.activeHabits.length>0;t.recentEntries.length;const c=s||l||a,f=[];s&&f.push(`Goals: "${(b=t.pendingIntentions[0])==null?void 0:b.text}"`),l&&f.push(`Habits: "${(_=t.activeHabits[0])==null?void 0:_.name}"`),a&&f.push("Past moments available");const h=`${i.systemPrompt}
 
 === CONVERSATIONAL INTELLIGENCE ===
 

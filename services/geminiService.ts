@@ -73,8 +73,31 @@ When referencing these, use phrases like:
     contextString += `CONTEXT from my active habits:\n${habitsSummary || "No habits."}\n\n`;
 
     if (context.latestReflection) {
-        contextString += `CONTEXT: My latest reflection was: "${context.latestReflection.summary}"`;
+        contextString += `CONTEXT: My latest reflection was: "${context.latestReflection.summary}"\n\n`;
     }
+
+    // Balanced instruction: Use context only when semantically aligned
+    contextString += `
+🎯 USING THE CONTEXT ABOVE — BALANCE IS KEY
+
+ONLY reference their data when there's a CLEAR SEMANTIC MATCH:
+✓ User says "I feel lazy" + has entry about "deadline stress" → These connect, mention it gently
+✗ User says "I feel lazy" + has entry about "groceries" → No connection, don't mention
+
+WHEN TO CONNECT:
+- Their current feeling clearly relates to something in their entries/goals/habits
+- They're stuck and their own data could unlock insight
+- The connection feels NATURAL, not forced
+
+WHEN TO STAY QUIET:
+- No clear semantic alignment
+- Bringing it up would feel like "reading their diary at them"
+- They just need to be heard, not analyzed
+- You're not sure if it connects
+
+THE GOAL: Feel like you KNOW them when it matters, not like you're constantly cross-referencing.
+If in doubt, just listen.
+`;
 
     return contextString;
 }
