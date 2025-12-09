@@ -331,7 +331,13 @@ serve(async (req) => {
 Entry: "${entryText}"
 
 Return JSON in this exact format:
-{"title": "Short Title", "tags": ["tag1", "tag2"], "primary_sentiment": "Reflective", "emoji": "📝"}
+{"title": "Short Title", "tags": ["tag1", "tag2"], "primary_sentiment": "Reflective", "emoji": "🌟"}
+
+EMOJI RULES:
+- Choose an emoji that reflects the EMOTION or TOPIC of the entry
+- Match the mood: 😓 for stress, 😊 for joy, 💪 for productivity, 😔 for sadness, 🎉 for celebration
+- Match the topic: 💻 for coding, 🏋️ for exercise, 💼 for work, 🏠 for home, 💡 for ideas
+- NEVER use 📓 or 📝 - too generic. Be specific to the content.
 
 Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, Frustrated, Sad, Overwhelmed, Confused, Reflective, Inquisitive, Observational`;
 
