@@ -17,7 +17,7 @@ interface OnboardingWizardProps {
   onComplete: (destination: 'stream' | 'chat', initialContext?: string, aiQuestion?: string) => void;
 }
 
-type Step = 'sanctuary' | 'personality' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'awe';
+type Step = 'splash' | 'sanctuary' | 'personality' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'awe';
 type Sentiment = 'Anxious' | 'Excited' | 'Overwhelmed' | 'Calm' | 'Tired' | 'Inspired' | 'Frustrated' | 'Grateful';
 type LifeArea = 'Work' | 'Relationships' | 'Health' | 'Self' | 'Finance';
 
@@ -116,8 +116,86 @@ if (recognition) {
   recognition.lang = 'en-US';
 }
 
+// Splash Step Component - The Clarity Loop Introduction
+const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+  const [phase, setPhase] = React.useState<'logo' | 'loop' | 'tagline' | 'fade'>('logo');
+
+  React.useEffect(() => {
+    // Phase timing: logo (0.8s) → loop (1.5s) → tagline (1s) → fade (0.5s)
+    const timers = [
+      setTimeout(() => setPhase('loop'), 800),
+      setTimeout(() => setPhase('tagline'), 2300),
+      setTimeout(() => setPhase('fade'), 3300),
+      setTimeout(() => onComplete(), 3800),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [onComplete]);
+
+  const loopSteps = [
+    { label: 'Write', color: 'bg-brand-teal/20 text-brand-teal' },
+    { label: 'Notice', color: 'bg-violet-500/20 text-violet-400' },
+    { label: 'Act', color: 'bg-amber-500/20 text-amber-400' },
+    { label: 'Reflect', color: 'bg-blue-500/20 text-blue-400' },
+    { label: 'Adjust', color: 'bg-emerald-500/20 text-emerald-400' },
+  ];
+
+  return (
+    <div className={`flex flex-col items-center justify-center relative z-10 transition-opacity duration-500 ${phase === 'fade' ? 'opacity-0' : 'opacity-100'}`}>
+      {/* Logo */}
+      <div className={`transition-all duration-700 ${phase === 'logo' ? 'scale-100 opacity-100' : 'scale-90 opacity-100 -translate-y-4'}`}>
+        <div className="flex items-center gap-3 mb-8">
+          <img src="/mindstream-logo.svg" alt="Mindstream" className="w-14 h-14 drop-shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
+          <span className="text-3xl font-display font-bold text-white tracking-tight">Mindstream</span>
+        </div>
+      </div>
+
+      {/* The Clarity Loop */}
+      <div className={`transition-all duration-700 delay-100 ${phase === 'logo' ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+        <div className="flex flex-wrap items-center justify-center gap-2 text-sm mb-6 max-w-xs">
+          {loopSteps.map((step, index) => (
+            <React.Fragment key={step.label}>
+              <span
+                className={`${step.color} px-3 py-1.5 rounded-full font-medium transition-all duration-500`}
+                style={{
+                  transitionDelay: `${index * 150}ms`,
+                  opacity: phase !== 'logo' ? 1 : 0,
+                  transform: phase !== 'logo' ? 'scale(1)' : 'scale(0.8)'
+                }}
+              >
+                {step.label}
+              </span>
+              {index < loopSteps.length - 1 && (
+                <span
+                  className="text-gray-500 transition-opacity duration-300"
+                  style={{ transitionDelay: `${index * 150 + 75}ms`, opacity: phase !== 'logo' ? 1 : 0 }}
+                >
+                  →
+                </span>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Tagline */}
+        <p className={`text-center text-gray-400 text-sm transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          Your Second Brain for Clarity
+        </p>
+      </div>
+
+      {/* Privacy note */}
+      <div className={`absolute bottom-[-80px] transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="flex items-center gap-2 text-gray-500 text-xs">
+          <span>🔒</span>
+          <span>Private by design</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onComplete }) => {
-  const [step, setStep] = useState<Step>('sanctuary');
+  const [step, setStep] = useState<Step>('splash');
   const [selectedSentiment, setSelectedSentiment] = useState<Sentiment | null>(null);
   const [selectedArea, setSelectedArea] = useState<LifeArea | null>(null);
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
@@ -410,6 +488,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
           <span className="text-white font-display font-bold text-lg">Mindstream</span>
         </div>
       </div>
+
+      {/* Step 0: Splash - The Clarity Loop Introduction */}
+      {step === 'splash' && (
+        <SplashStep onComplete={() => setStep('sanctuary')} />
+      )}
 
       {/* Step 1: Sanctuary */}
       {step === 'sanctuary' && (

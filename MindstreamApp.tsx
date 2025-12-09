@@ -34,7 +34,6 @@ import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ReflectionUnlockModal } from './components/ReflectionUnlockModal';
-import { WelcomeSplash } from './components/WelcomeSplash';
 import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewService';
 
 import { useAppLogic } from './hooks/useAppLogic';
@@ -89,17 +88,6 @@ export const MindstreamApp: React.FC = () => {
     // Progressive disclosure: track if user has visited Insights tab after unlock
     const hasVisitedInsightsKey = user ? `hasVisitedInsights_${user.id}` : 'hasVisitedInsights';
     const [hasVisitedInsights, setHasVisitedInsights] = useLocalStorage<boolean>(hasVisitedInsightsKey, false);
-
-    // Welcome splash: show once per user
-    // IMPORTANT: Only use user-specific key, never a generic fallback
-    const hasSeenSplashKey = user?.id ? `hasSeenWelcomeSplash_${user.id}` : null;
-    const [storedHasSeenSplash, setStoredHasSeenSplash] = useLocalStorage<boolean>(
-        hasSeenSplashKey || 'hasSeenWelcomeSplash_temp',
-        false
-    );
-    // Only trust the stored value if we have a real user-specific key
-    const hasSeenWelcomeSplash = hasSeenSplashKey ? storedHasSeenSplash : false;
-    const setHasSeenWelcomeSplash = setStoredHasSeenSplash;
 
     // Count real entries (exclude temp entries)
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
@@ -234,19 +222,7 @@ export const MindstreamApp: React.FC = () => {
         setPendingUnlockType(null);
     };
 
-    // Show Welcome Splash for users who haven't seen it (regardless of onboarding state)
-    // This ensures it shows even for account re-signups
-    if (user && !hasSeenWelcomeSplash) {
-        return (
-            <WelcomeSplash
-                onComplete={() => {
-                    setHasSeenWelcomeSplash(true);
-                }}
-            />
-        );
-    }
-
-    // Show Landing Screen for new users (after splash)
+    // Show Landing Screen for new users
     if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
         return (
             <LandingScreen
