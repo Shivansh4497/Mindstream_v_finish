@@ -134,21 +134,48 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   // Pentagon positions (5 points evenly spaced around a circle)
   // Starting from top and going clockwise
   const radius = 110; // Distance from center
+  const gapAngle = 20; // Gap in degrees where pills are (don't draw arc here)
+
   const loopSteps = [
-    { label: 'Write', color: 'bg-brand-teal/30 text-brand-teal border-brand-teal/50', angle: -90 },      // Top
-    { label: 'Notice', color: 'bg-violet-500/30 text-violet-400 border-violet-500/50', angle: -18 },     // Top-right
-    { label: 'Act', color: 'bg-amber-500/30 text-amber-400 border-amber-500/50', angle: 54 },            // Bottom-right
-    { label: 'Reflect', color: 'bg-blue-500/30 text-blue-400 border-blue-500/50', angle: 126 },          // Bottom-left
-    { label: 'Adjust', color: 'bg-emerald-500/30 text-emerald-400 border-emerald-500/50', angle: 198 },  // Top-left
+    { label: 'Write', color: 'bg-brand-teal/30 text-brand-teal border-brand-teal/50', angle: -90, arcColor: '#2dd4bf' },
+    { label: 'Notice', color: 'bg-violet-500/30 text-violet-400 border-violet-500/50', angle: -18, arcColor: '#a78bfa' },
+    { label: 'Act', color: 'bg-amber-500/30 text-amber-400 border-amber-500/50', angle: 54, arcColor: '#fbbf24' },
+    { label: 'Reflect', color: 'bg-blue-500/30 text-blue-400 border-blue-500/50', angle: 126, arcColor: '#60a5fa' },
+    { label: 'Adjust', color: 'bg-emerald-500/30 text-emerald-400 border-emerald-500/50', angle: 198, arcColor: '#34d399' },
   ];
 
   // Calculate position from angle
-  const getPosition = (angle: number) => {
+  const getPosition = (angle: number, r: number = radius) => {
     const radians = (angle * Math.PI) / 180;
     return {
-      x: Math.cos(radians) * radius,
-      y: Math.sin(radians) * radius,
+      x: Math.cos(radians) * r,
+      y: Math.sin(radians) * r,
     };
+  };
+
+  // Create arc path between two angles (avoiding the pill areas)
+  const createArcPath = (startAngle: number, endAngle: number) => {
+    // Add gap offset to avoid pills
+    const adjustedStart = startAngle + gapAngle;
+    let adjustedEnd = endAngle - gapAngle;
+
+    // Handle wrap-around (from Adjust back to Write)
+    if (adjustedEnd < adjustedStart) {
+      adjustedEnd += 360;
+    }
+
+    const startRad = (adjustedStart * Math.PI) / 180;
+    const endRad = (adjustedEnd * Math.PI) / 180;
+
+    const x1 = Math.cos(startRad) * radius;
+    const y1 = Math.sin(startRad) * radius;
+    const x2 = Math.cos(endRad) * radius;
+    const y2 = Math.sin(endRad) * radius;
+
+    // Determine if arc should be large (> 180 degrees)
+    const largeArc = (adjustedEnd - adjustedStart) > 180 ? 1 : 0;
+
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
   };
 
   return (
@@ -157,63 +184,64 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
       {/* Circular Container */}
       <div className="relative" style={{ width: radius * 2 + 80, height: radius * 2 + 80 }}>
 
-        {/* SVG for curved connecting lines */}
+        {/* SVG for curved connecting arcs and arrows */}
         <svg
           className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${phase === 'logo' ? 'opacity-0' : 'opacity-100'}`}
           viewBox={`${-radius - 40} ${-radius - 40} ${(radius + 40) * 2} ${(radius + 40) * 2}`}
         >
-          {/* Circular path connecting all points */}
-          <circle
-            cx="0"
-            cy="0"
-            r={radius}
-            fill="none"
-            stroke="url(#loopGradient)"
-            strokeWidth="2"
-            strokeDasharray="8 4"
-            className="opacity-30"
-          />
-          {/* Gradient definition */}
-          <defs>
-            <linearGradient id="loopGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#2dd4bf" />
-              <stop offset="25%" stopColor="#a78bfa" />
-              <stop offset="50%" stopColor="#fbbf24" />
-              <stop offset="75%" stopColor="#60a5fa" />
-              <stop offset="100%" stopColor="#34d399" />
-            </linearGradient>
-          </defs>
-          {/* Arrow heads on the circle */}
+          {/* Arc segments between each pill */}
           {loopSteps.map((step, index) => {
             const nextStep = loopSteps[(index + 1) % loopSteps.length];
-            const midAngle = (step.angle + nextStep.angle) / 2 + (index === loopSteps.length - 1 ? 180 : 0);
-            const arrowPos = getPosition(midAngle + (index === 4 ? -36 : 0));
-            const arrowAngle = midAngle + 90;
+            const arcPath = createArcPath(step.angle, nextStep.angle);
+
+            // Arrow position at midpoint of arc
+            const midAngle = step.angle + gapAngle + ((nextStep.angle - step.angle + 360) % 360 - 2 * gapAngle) / 2;
+            const arrowPos = getPosition(midAngle);
+            // Arrow points in clockwise direction (tangent to circle)
+            const arrowRotation = midAngle + 90;
+
             return (
-              <polygon
-                key={`arrow-${index}`}
-                points="0,-4 4,4 -4,4"
-                fill="#4b5563"
-                transform={`translate(${arrowPos.x}, ${arrowPos.y}) rotate(${arrowAngle})`}
-                className={`transition-opacity duration-500`}
-                style={{
-                  transitionDelay: `${index * 100 + 300}ms`,
-                  opacity: phase !== 'logo' ? 0.6 : 0
-                }}
-              />
+              <React.Fragment key={`arc-${index}`}>
+                {/* Arc path */}
+                <path
+                  d={arcPath}
+                  fill="none"
+                  stroke={step.arcColor}
+                  strokeWidth="2"
+                  strokeDasharray="6 4"
+                  className="opacity-40"
+                  style={{
+                    transitionDelay: `${index * 100}ms`,
+                  }}
+                />
+                {/* Arrow head */}
+                <polygon
+                  points="0,-5 6,5 -6,5"
+                  fill={step.arcColor}
+                  transform={`translate(${arrowPos.x}, ${arrowPos.y}) rotate(${arrowRotation})`}
+                  className="opacity-60"
+                  style={{
+                    transitionDelay: `${index * 100 + 200}ms`,
+                  }}
+                />
+              </React.Fragment>
             );
           })}
         </svg>
 
-        {/* Center: Mindstream Logo */}
+        {/* Center: Mindstream Logo with pulse animation */}
         <div
           className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ${phase === 'logo' ? 'scale-110' : 'scale-100'}`}
         >
-          <img
-            src="/mindstream-logo.svg"
-            alt="Mindstream"
-            className="w-16 h-16 drop-shadow-[0_0_20px_rgba(45,212,191,0.5)]"
-          />
+          <div className={`relative ${phase !== 'logo' ? 'animate-pulse-slow' : ''}`}>
+            {/* Glow effect */}
+            <div className="absolute inset-0 w-16 h-16 rounded-full bg-brand-teal/20 blur-xl animate-pulse" />
+            <img
+              src="/mindstream-logo.svg"
+              alt="Mindstream"
+              className="relative w-16 h-16 drop-shadow-[0_0_25px_rgba(45,212,191,0.6)]"
+            />
+          </div>
         </div>
 
         {/* Loop Steps positioned around the circle */}
@@ -231,7 +259,7 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
               }}
             >
               <span
-                className={`${step.color} px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap shadow-lg`}
+                className={`${step.color} px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap shadow-lg backdrop-blur-sm`}
               >
                 {step.label}
               </span>
