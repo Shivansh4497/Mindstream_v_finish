@@ -4,7 +4,7 @@ import { Message, AISuggestion } from '../types';
 import { MessageBubble } from './MessageBubble';
 import { speak, stopSpeaking, initializeTTS } from '../utils/tts';
 import { ChatSharingModal } from './ChatSharingModal';
-import { saveChatFeedback, logEvent, EntryPoint, ChatMessage } from '../services/dbService';
+import { createChatFeedback, updateChatFeedback, logEvent, EntryPoint, ChatMessage } from '../services/dbService';
 
 interface ChatViewProps {
   messages: Message[];
@@ -41,19 +41,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
   });
   const [showSharingModal, setShowSharingModal] = useState(false);
 
-  // Refs to store latest values for unmount-only save (avoid stale closure)
-  const messagesRef = useRef(messages);
-  const userIdRef = useRef(userId);
-  const personalityRef = useRef(currentPersonality);
-  const entryPointRef = useRef(entryPoint);
-
-  // Keep refs in sync with props
-  useEffect(() => {
-    messagesRef.current = messages;
-    userIdRef.current = userId;
-    personalityRef.current = currentPersonality;
-    entryPointRef.current = entryPoint;
-  });
+  // Session ID for chat feedback - INSERT on first save, UPDATE on subsequent
+  const feedbackSessionId = useRef<string | null>(null);
+  const wasLoadingRef = useRef(false);
+  const lastSavedMessageCount = useRef(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -96,31 +87,47 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [messages, chatSharingPromptShown, showSharingModal, chatSharingEnabled, userId]);
 
-  // Save chat feedback ONCE on TRUE component unmount only
-  // Using refs to avoid stale closures - empty deps means only runs on unmount
+  // Save/update chat feedback after AI finishes responding
+  // INSERT on first save, UPDATE on subsequent saves
   useEffect(() => {
-    return () => {
-      const sharingEnabled = localStorage.getItem('chatSharingEnabled');
-      const currentMessages = messagesRef.current;
-      const currentUserId = userIdRef.current;
-      const currentPersonality = personalityRef.current;
-      const currentEntryPoint = entryPointRef.current;
+    const saveOrUpdateFeedback = async () => {
+      // Detect when AI just finished responding
+      if (wasLoadingRef.current && !isLoading && chatSharingEnabled && userId) {
+        // Only save if we have new messages since last save
+        if (messages.length > lastSavedMessageCount.current && messages.length > 1) {
+          const chatMessages: ChatMessage[] = messages.map(m => ({
+            sender: m.sender,
+            text: m.text,
+            timestamp: new Date().toISOString()
+          }));
 
-      if (sharingEnabled === 'true' && currentUserId && currentMessages.length > 1) {
-        const chatMessages: ChatMessage[] = currentMessages.map(m => ({
-          sender: m.sender,
-          text: m.text,
-          timestamp: new Date().toISOString()
-        }));
-
-        saveChatFeedback(currentUserId, chatMessages, currentPersonality, currentEntryPoint);
-        logEvent(currentUserId, 'chat_feedback_session_saved', {
-          message_count: chatMessages.length,
-          entry_point: currentEntryPoint
-        });
+          if (feedbackSessionId.current === null) {
+            // First save - INSERT
+            const newId = await createChatFeedback(userId, chatMessages, currentPersonality, entryPoint);
+            if (newId) {
+              feedbackSessionId.current = newId;
+              lastSavedMessageCount.current = messages.length;
+              logEvent(userId, 'chat_feedback_session_saved', {
+                message_count: chatMessages.length,
+                entry_point: entryPoint,
+                action: 'created'
+              });
+            }
+          } else {
+            // Subsequent save - UPDATE
+            const success = await updateChatFeedback(feedbackSessionId.current, chatMessages);
+            if (success) {
+              lastSavedMessageCount.current = messages.length;
+              // Don't log every update - too noisy
+            }
+          }
+        }
       }
     };
-  }, []); // Empty deps = TRUE unmount only
+
+    saveOrUpdateFeedback();
+    wasLoadingRef.current = isLoading;
+  }, [isLoading, chatSharingEnabled, userId, messages, currentPersonality, entryPoint]);
 
   // Auto-speak AI responses
   useEffect(() => {

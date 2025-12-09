@@ -35,6 +35,12 @@ CREATE POLICY "Users can delete their shared chats"
   TO authenticated
   USING (auth.uid() = user_id);
 
+-- Policy: Users can UPDATE their own shared chats
+CREATE POLICY "Users can update their shared chats"
+  ON chat_feedback FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_chat_feedback_expires ON chat_feedback(expires_at);
 CREATE INDEX IF NOT EXISTS idx_chat_feedback_user ON chat_feedback(user_id);

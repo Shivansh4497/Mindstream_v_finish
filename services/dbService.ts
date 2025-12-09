@@ -1161,14 +1161,48 @@ export interface ChatMessage {
 export type EntryPoint = 'quick_start' | 'guided' | 'organic';
 
 /**
- * Save a chat conversation for founder review (opt-in only).
- * Caps conversation at 25 messages to prevent JSON bloat.
+ * Create a new chat feedback entry (first message in session).
+ * Returns the created row ID for subsequent updates.
  */
-export const saveChatFeedback = async (
+export const createChatFeedback = async (
     userId: string,
     conversation: ChatMessage[],
     personality: string,
     entryPoint: EntryPoint
+): Promise<string | null> => {
+    if (!supabase) return null;
+
+    try {
+        // Cap at 25 messages
+        const cappedConversation = conversation.slice(-25);
+
+        const { data, error } = await supabase.from('chat_feedback').insert({
+            user_id: userId,
+            conversation: cappedConversation,
+            personality,
+            entry_point: entryPoint,
+            message_count: cappedConversation.length
+        }).select('id').single();
+
+        if (error) {
+            console.error('Failed to create chat feedback:', error);
+            return null;
+        }
+
+        return data?.id || null;
+    } catch (error) {
+        console.error('Error creating chat feedback:', error);
+        return null;
+    }
+};
+
+/**
+ * Update an existing chat feedback entry (subsequent messages).
+ * Updates conversation and message_count.
+ */
+export const updateChatFeedback = async (
+    feedbackId: string,
+    conversation: ChatMessage[]
 ): Promise<boolean> => {
     if (!supabase) return false;
 
@@ -1176,22 +1210,21 @@ export const saveChatFeedback = async (
         // Cap at 25 messages
         const cappedConversation = conversation.slice(-25);
 
-        const { error } = await supabase.from('chat_feedback').insert({
-            user_id: userId,
-            conversation: cappedConversation,
-            personality,
-            entry_point: entryPoint,
-            message_count: cappedConversation.length
-        });
+        const { error } = await supabase.from('chat_feedback')
+            .update({
+                conversation: cappedConversation,
+                message_count: cappedConversation.length
+            })
+            .eq('id', feedbackId);
 
         if (error) {
-            console.error('Failed to save chat feedback:', error);
+            console.error('Failed to update chat feedback:', error);
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error('Error saving chat feedback:', error);
+        console.error('Error updating chat feedback:', error);
         return false;
     }
 };
