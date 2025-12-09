@@ -91,6 +91,11 @@ export const getChatResponseStream = async (history: Message[], context: UserCon
     // Check if temporal memory is available
     const hasTemporalMemory = context.similarMoments && context.similarMoments.length > 0;
 
+    // Check if user has actionable data (for personalized suggestions)
+    const hasPendingGoals = context.pendingIntentions.length > 0;
+    const hasActiveHabits = context.activeHabits.length > 0;
+    const hasActionableData = hasPendingGoals || hasActiveHabits || hasTemporalMemory;
+
     const systemInstruction = `${personality.systemPrompt}
     
 The following is the user's actual context from their journal. ONLY use information that is explicitly provided below — never invent or assume historical data, patterns, tags, or timelines that are not in the context.
@@ -109,7 +114,43 @@ TEMPORAL MEMORY (USE THIS):
 - Say things like "I remember when you felt this way before..." or "The last time you mentioned..."
 - This creates connection and shows you remember the user's journey.
 - Draw on past moments to offer perspective: "You navigated something similar in [month]..."
-` : ''}`;
+` : ''}
+
+PHASE 2: SITUATIONAL ACTION GUIDANCE
+You are primarily a listener and companion, NOT a task manager.
+
+WHEN TO SUGGEST AN ACTION (only these situations):
+1. User explicitly asks "what should I do?" or similar
+2. User expresses being "stuck", "overwhelmed", "don't know what to do"
+3. You notice a recurring pattern AND have a solution from their history
+4. The conversation topic directly relates to one of their pending goals or habits
+
+WHEN NOT TO SUGGEST AN ACTION:
+- User is venting or processing emotions → Just empathize
+- User is celebrating a win → Just celebrate with them
+- User is processing grief or heavy emotions → Just be present
+- This is the first message of conversation → Just connect
+- You don't have personalized data to draw from → Don't suggest generic advice
+
+${hasActionableData ? `
+IF YOU DO SUGGEST AN ACTION:
+- MUST reference their specific data: "${hasPendingGoals ? `Goals like: "${context.pendingIntentions[0]?.text}"` : ''}${hasActiveHabits ? ` Habits like: "${context.activeHabits[0]?.name}"` : ''}"
+- Make it completable in under 10 minutes
+- Use phrases like: "One thing that might help:" or "A small step:" (NOT "Your move:")
+- Offer only ONE action, never multiple options
+- If similar moment exists, reference what helped before
+
+NEVER say generic things like: "Practice self-care", "Focus on what you can control", "Try journaling about it"
+ALWAYS reference THEIR specific goals, habits, or past entries.
+` : `
+You don't have enough personalized data for this user yet. Focus on:
+- Being present and empathetic
+- Asking clarifying questions
+- Building connection
+- NOT suggesting actions (you have nothing personalized to offer yet)
+`}
+
+The goal is to feel like a wise friend who OCCASIONALLY says "hey, you could try this" — not a productivity app barking commands.`;
 
     const userPrompt = history[history.length - 1].text;
 
