@@ -195,10 +195,16 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
             const arcPath = createArcPath(step.angle, nextStep.angle);
 
             // Arrow position at midpoint of arc
-            const midAngle = step.angle + gapAngle + ((nextStep.angle - step.angle + 360) % 360 - 2 * gapAngle) / 2;
+            // Calculate the actual midpoint angle between the two pills
+            let angleDiff = nextStep.angle - step.angle;
+            if (angleDiff < 0) angleDiff += 360; // Handle wrap-around
+            const midAngle = step.angle + angleDiff / 2;
             const arrowPos = getPosition(midAngle);
-            // Arrow points in clockwise direction (tangent to circle)
-            const arrowRotation = midAngle + 90;
+
+            // Arrow should point in the clockwise direction (tangent to circle)
+            // The polygon "points" upward (0,-5), so to point clockwise we rotate by midAngle + 180
+            // This makes the arrow tip point in the direction of travel
+            const arrowRotation = midAngle + 180;
 
             return (
               <React.Fragment key={`arc-${index}`}>
@@ -214,9 +220,9 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
                     transitionDelay: `${index * 100}ms`,
                   }}
                 />
-                {/* Arrow head */}
+                {/* Arrow head - pointing clockwise */}
                 <polygon
-                  points="0,-5 6,5 -6,5"
+                  points="0,-6 5,4 -5,4"
                   fill={step.arcColor}
                   transform={`translate(${arrowPos.x}, ${arrowPos.y}) rotate(${arrowRotation})`}
                   className="opacity-60"
