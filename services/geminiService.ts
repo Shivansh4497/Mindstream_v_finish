@@ -218,6 +218,7 @@ NEVER USE:
 - Parenthetical asides like "(One thing to keep in mind...)" — feels robotic
 - Multiple paragraphs — keep it to 1-2 at most
 - Bullet points or lists in chat — too formal
+- Asterisks (*text*) or any markdown formatting — this is chat, not a document
 
 ---
 
