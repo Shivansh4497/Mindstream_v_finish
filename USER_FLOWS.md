@@ -560,6 +560,37 @@ The following data is injected into every chat response:
 
 ---
 
+### 7.6 Header Menu & Info Modal (NEW v6.7)
+**Components:** [Header.tsx](file:///Users/director/Mindstream_v1/components/Header.tsx), [InfoModal.tsx](file:///Users/director/Mindstream_v1/components/InfoModal.tsx)
+
+**Flow:**
+```
+User clicks avatar (top right)
+    ↓
+Dropdown menu appears:
+    ├── "How It Works" → Opens InfoModal
+    ├── "Settings" → Navigates to Settings View
+    ├── "Logout" → Signs out
+    └── "Delete Account" → Confirmation → Deletes all data
+```
+
+**InfoModal Content Structure:**
+```
+How Mindstream Works
+├── What is Mindstream? (hidden patterns between feeling & behavior)
+├── ⚡ The Real Magic (AHA moment: "stressed when skip exercise")
+├── ✨ The 4 Core Pillars (Stream, Habits, Goals, Chat)
+├── 🚀 How to Get the Most Value (4 steps with reasoning)
+└── 🔒 Privacy footer
+```
+
+**Purpose:** 
+- Reinforce product understanding for returning users
+- Provide always-accessible "what is this app" explanation
+- No tutorial fluff — belief reinforcement only
+
+---
+
 ## 8. Settings View Flows
 
 ### 8.1 Settings Structure

@@ -374,14 +374,20 @@ If in doubt, just listen.
 ### Trigger
 When user creates or updates a journal entry.
 
-### Prompt
+### Prompt (v6.7 - Improved Emoji Selection)
 
 ```
 Analyze this journal entry and respond with ONLY a JSON object (no markdown, no code blocks):
 Entry: "{entryText}"
 
 Return JSON in this exact format:
-{"title": "Short Title", "tags": ["tag1", "tag2"], "primary_sentiment": "Reflective", "emoji": "📝"}
+{"title": "Short Title", "tags": ["tag1", "tag2"], "primary_sentiment": "Reflective", "emoji": "🌟"}
+
+EMOJI RULES:
+- Choose an emoji that reflects the EMOTION or TOPIC of the entry
+- Match the mood: 😓 for stress, 😊 for joy, 💪 for productivity, 😔 for sadness, 🎉 for celebration
+- Match the topic: 💻 for coding, 🏋️ for exercise, 💼 for work, 🏠 for home, 💡 for ideas
+- NEVER use 📓 or 📝 - too generic. Be specific to the content.
 
 Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, Frustrated, Sad, Overwhelmed, Confused, Reflective, Inquisitive, Observational
 ```
@@ -393,11 +399,12 @@ Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, F
   "title": "Morning Reflections",
   "tags": ["work", "productivity"],
   "primary_sentiment": "Hopeful",
-  "emoji": "🌅"
+  "emoji": "💪"
 }
 ```
 
 ---
+
 
 ## 5. Suggestion Generation Prompts
 

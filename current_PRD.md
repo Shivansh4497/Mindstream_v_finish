@@ -1942,7 +1942,7 @@ Production URL: mindstream-v1.vercel.app
 - `IntentionsInputBar.tsx` - Intention creation with ETA
 - `ETASelector.tsx` - Deadline preset picker
 
-#### **Interactive Components (11 components)**
+#### **Interactive Components (13 components)**
 - `OnboardingWizard.tsx` - 7-step onboarding flow **← UPDATED v6.3 (logo header)**
 - `PersonalitySelector.tsx` - AI companion picker
 - `SearchModal.tsx` - Full-text entry search
@@ -1953,6 +1953,8 @@ Production URL: mindstream-v1.vercel.app
 - `DeleteConfirmationModal.tsx` - Safe deletion
 - `PrivacyModal.tsx` - First-launch privacy message
 - `ReflectionUnlockModal.tsx` - Tier unlock celebration **← NEW v6.2**
+- `InfoModal.tsx` - "How It Works" app explanation **← NEW v6.7**
+- `ChatSharingModal.tsx` - Opt-in chat feedback prompt **← NEW v6.7**
 - `LifeAreaDashboard.tsx` - Domain-filtered view
 
 #### **Empty State Components (3 components)**
