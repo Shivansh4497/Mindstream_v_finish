@@ -68,9 +68,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ messages, isLoading, onAddSu
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* TTS Toggle Button */}
-      <div className="flex flex-col border-b border-white/5">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* TTS Toggle Button - Sticky Header */}
+      <div className="flex-shrink-0 flex flex-col border-b border-white/5 bg-brand-indigo">
         <div className="flex justify-end p-3">
           <button
             onClick={toggleTTS}
@@ -99,7 +99,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ messages, isLoading, onAddSu
         </div>
       </div>
 
-      <main className="flex-grow overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-4 min-h-0">
         {messages.map((msg, index) => (
           <MessageBubble
             key={msg.id || index}
