@@ -606,6 +606,64 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
 
           {displayedInsight.length === insight.insight.length && (
             <div className="flex flex-col gap-3 animate-fade-in">
+
+              {/* The Loop Narrative - Value Prop, Companion, Loop, Privacy */}
+              <div className="pt-4 space-y-4 border-t border-white/5">
+
+                {/* Value Proposition */}
+                <div className="text-center space-y-1">
+                  <p className="text-xs text-brand-teal/80 uppercase tracking-widest font-semibold">
+                    Your Second Brain for Clarity
+                  </p>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    Mindstream connects how you feel with what you do — so you can finally understand what actually works for you.
+                  </p>
+                </div>
+
+                {/* Companion */}
+                <div className="bg-white/5 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-lg">🧠</span>
+                    <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">Built Just for You</span>
+                  </div>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    A companion who grows with you — the more you share, the more it understands.
+                  </p>
+                </div>
+
+                {/* The Clarity Loop */}
+                <div className="bg-white/5 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">∞</span>
+                    <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">The Clarity Loop</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-gray-300">
+                    <span className="bg-brand-teal/20 text-brand-teal px-2 py-1 rounded-full">Write</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="bg-violet-500/20 text-violet-400 px-2 py-1 rounded-full">Notice</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full">Act</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Reflect</span>
+                    <span className="text-gray-500">→</span>
+                    <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Adjust</span>
+                  </div>
+                  <p className="text-center text-xs text-gray-500 mt-2 italic">
+                    That's it. Just show up.
+                  </p>
+                </div>
+
+                {/* Privacy */}
+                <div className="flex items-center justify-center gap-2 py-2">
+                  <span className="text-base">🔒</span>
+                  <p className="text-xs text-gray-500">
+                    <span className="text-gray-400 font-medium">Private by design.</span> Your data is yours. Always.
+                  </p>
+                </div>
+
+              </div>
+
+              {/* CTA Buttons */}
               <button
                 onClick={() => onComplete('chat', elaboration, insight.followUpQuestion)}
                 className="w-full flex items-center justify-center gap-2 bg-brand-teal text-brand-indigo font-bold py-4 rounded-xl hover:bg-teal-300 transition-all shadow-lg"
