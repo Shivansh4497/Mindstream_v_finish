@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 9, 2025 (v6.6 - Context-Based Chat, Welcome Splash, Balanced Context Usage)  
+> **Last Updated:** December 9, 2025 (v6.7 - Opt-In Chat Feedback, Stricter Brevity, No-Asterisks)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -410,13 +410,45 @@ Insights View (unlocks at 5 entries)
 
 ```
 Chat View
-├── TTS Toggle (Voice On/Off)
+├── Header
+│   ├── Sharing Toggle (Share: Off / Sharing ✓)
+│   └── TTS Toggle (Voice On/Off)
+├── Ephemerality Indicator ("Conversations reset when you leave this tab")
 ├── Messages (scrollable)
 │   ├── User bubbles
 │   └── AI bubbles (with streaming)
 ├── Suggestion Chips (first message only)
 └── ChatInputBar
 ```
+
+### 7.1.1 Opt-In Chat Sharing (NEW v6.7)
+**Purpose:** Allow users to share conversations for AI quality improvement.
+
+**Flow:**
+```
+User sends 3rd message (if sharing not already enabled)
+    ↓
+ChatSharingModal appears
+    ├── [Not Now] → Modal dismissed, never shown again
+    └── [Yes, Help Out] → Sharing enabled, toggle turns ON
+
+With Sharing ON:
+    - INSERT new row on first AI response (stores session ID)
+    - UPDATE same row on subsequent AI responses
+    - Result: ONE row per chat session, always current
+```
+
+**Privacy Guarantees (displayed in modal):**
+- Only viewed by Mindstream team
+- Only used for improving AI quality
+- Never used for marketing or ads
+- Auto-deleted after 90 days
+- User can turn off or delete anytime
+
+**Settings Integration:**
+- Settings → Data & Privacy → "Shared Conversations" card
+- Shows count of shared conversations
+- "Delete All Shared Chats" button
 
 ### 7.2 Chat Starters
 **Component:** [SuggestionChips.tsx](file:///Users/director/Mindstream_v1/SuggestionChips.tsx)
@@ -438,12 +470,13 @@ When chat has only welcome message, AI generates 3 contextual starters based on:
 **AI Response Process:**
 1. Extract keywords from user message
 2. RAG: Search entries for relevant context
-3. Detect user intent (6 modes)
+3. Detect user intent (8 patterns)
 4. Inject context + personality + temporal memory
 5. Stream response chunk-by-chunk
 6. Optionally speak response (if TTS enabled)
+7. If sharing enabled: Create/update chat_feedback row
 
-### 7.4 Conversational Intelligence System (v6.6 - Context-Based Detection)
+### 7.4 Conversational Intelligence System (v6.7 - Stricter Brevity)
 
 **Core Principle:** READ THE ROOM, not keywords. Match user's energy.
 
@@ -452,12 +485,12 @@ The AI uses an 8-pattern context-based detection system:
 | Pattern | User Signals | AI Response |
 |---------|--------------|-------------|
 | **GREETING** | "hey", "hi" at start | Greet warmly: "Hey! What's on your mind?" |
-| **VENTING** | Emotional, not asking | Mirror briefly. 1-2 sentences. Don't solve. |
+| **VENTING** | Emotional, not asking | Mirror briefly. 1 sentence. Don't solve. |
 | **STUCK** | Going in circles | ONE fresh perspective. |
 | **EXPLORING** | Vague, unclear | Ask ONE clarifying question. |
 | **CELEBRATING** | Sharing a win | Celebrate WITH them. Let it land. |
 | **ASKING FOR HELP** | Direct question | Personalized answer using their data. |
-| **DISENGAGED** | Brief responses over 2+ messages | Back off: "I'm here when you're ready." |
+| **DISENGAGED** | 2+ deflections ("nothing", "idk") | STOP asking questions. Validate and back off. |
 | **CONFUSED** | "what?", "huh?" | Simplify. Reset. Be direct. |
 
 **Critical Anti-Patterns:**
@@ -466,17 +499,16 @@ The AI uses an 8-pattern context-based detection system:
 - DON'T keep asking questions if they're not engaging
 - DON'T ignore confusion — address it directly
 
-**Response Balance (NEW v6.6):**
-- 60% Listening/mirroring
-- 25% Questions
-- 15% Suggestions
+**Brevity Rule (STRICT v6.7):**
+- ABSOLUTE MAX: 50 words per response
+- Pick ONE: question OR insight — not both
+- No asterisks (*text*) or markdown formatting
+- No parenthetical asides like "(One thing to keep in mind...)"
 
-**Response Variety (NEW v6.6):**
+**Response Variety:**
 - "What's the one thing..." → max ONCE per conversation
 - After 2-3 questions, offer observation or suggestion instead
 - Celebrate breakthroughs: "That's huge." / "That's progress."
-
-**Brevity Rule:** If user has to scroll on mobile, response is too long.
 
 ### 7.5 Temporal Memory (v6.5)
 

@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.6  
-**Last Updated:** December 9, 2025 (Welcome Splash, Context-Based Chat AI, Balanced Context Usage)  
+**Version:** 6.7  
+**Last Updated:** December 9, 2025 (Opt-In Chat Feedback, Stricter Brevity, No-Asterisks Rule)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -1127,6 +1127,20 @@ create table proactive_nudges (
   acted_on_at timestamptz
 );
 
+-- 10. Chat Feedback Table (NEW v6.7 - Opt-In Chat Sharing)
+create table chat_feedback (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  conversation jsonb not null,        -- Full conversation (max 25 messages)
+  personality text,                    -- Which AI companion was active
+  entry_point text,                    -- 'quick_start', 'guided', 'organic'
+  message_count integer,               -- Quick lookup for count display
+  shared_at timestamptz default now(),
+  expires_at timestamptz default (now() + interval '90 days'),
+  reviewed boolean default false,
+  notes text                           -- For founder review notes
+);
+
 -- Row Level Security (RLS)
 alter table profiles enable row level security;
 alter table user_preferences enable row level security;
@@ -1137,6 +1151,7 @@ alter table habit_logs enable row level security;
 alter table intentions enable row level security;
 alter table insight_cards enable row level security;
 alter table proactive_nudges enable row level security;
+alter table chat_feedback enable row level security;
 
 -- RLS Policies (Users can only access their own data)
 create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
@@ -1146,6 +1161,11 @@ create policy "Users can view own entries" on entries for select using (auth.uid
 create policy "Users can insert own entries" on entries for insert with check (auth.uid() = user_id);
 create policy "Users can view own nudges" on proactive_nudges for select using (auth.uid() = user_id);
 create policy "Users can update own nudges" on proactive_nudges for update using (auth.uid() = user_id);
+-- Chat feedback policies (users can share, view count, update, delete their own)
+create policy "Users can share their own chats" on chat_feedback for insert with check (auth.uid() = user_id);
+create policy "Users can count their shared chats" on chat_feedback for select using (auth.uid() = user_id);
+create policy "Users can update their shared chats" on chat_feedback for update using (auth.uid() = user_id);
+create policy "Users can delete their shared chats" on chat_feedback for delete using (auth.uid() = user_id);
 -- (Additional policies for all tables following same pattern)
 ```
 
