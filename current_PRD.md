@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.5  
-**Last Updated:** December 9, 2025 (Conversational Intelligence, Temporal Memory, Humanized Voice)  
+**Version:** 6.6  
+**Last Updated:** December 9, 2025 (Welcome Splash, Context-Based Chat AI, Balanced Context Usage)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -316,17 +316,18 @@ Suggestions must:
 **Purpose:** "Talk to your journal" via conversational AI.
 
 **Features:**
-- **Universal Voice Input:** **NEW!** Microphone button matching Stream tab
+- **Universal Voice Input:** Microphone button matching Stream tab
   - Web Speech API integration
   - Real-time voice-to-text transcription
   - Pulse animation during recording
   - Seamless combination with manual typing
   - "Listening..." placeholder feedback
 - **RAG Context Window:**
-  - Last 15 entries
-  - Pending intentions
-  - Active habits
+  - Last 10 entries
+  - Pending intentions (10)
+  - Active habits (15)
   - Latest reflection
+  - Similar past moments (3) — Temporal Memory
   - Search results (keyword extraction)
   - AI Personality context
 - **Smart Starters:** AI generates conversation openers based on recent data
@@ -335,12 +336,33 @@ Suggestions must:
 - **Personality Adaptation:** Tone matches selected companion
 - **Streaming Responses:** Chunk-by-chunk display for immediate feedback
 
-**Technical Implementation:**
-- Streaming responses (chunk-by-chunk display)
-- Keyword extraction for semantic search
-- Full-text search on entries via PostgreSQL
-- Dynamic system prompt based on user's personality preference
-- Voice recognition with browser compatibility checks
+**Conversational Intelligence (v6.6 - Context-Based Detection):**
+
+| Pattern | User Signals | AI Response |
+|---------|--------------|-------------|
+| GREETING | "hey", "hi" | Greet warmly, don't assume |
+| VENTING | Emotional, not asking | Mirror briefly, 1-2 sentences |
+| STUCK | Going in circles | ONE fresh perspective |
+| EXPLORING | Vague, unclear | ONE clarifying question |
+| CELEBRATING | Sharing a win | Celebrate, let it land |
+| ASKING FOR HELP | Direct question | Personalized answer from data |
+| DISENGAGED | Brief responses 2+ times | Back off gracefully |
+| CONFUSED | "what?", "huh?" | Simplify, reset |
+
+**Core Principle:** READ THE ROOM, not keywords. Match user's energy.
+
+**Response Variety (v6.6):**
+- "What's the one thing..." → max ONCE per conversation
+- After 2-3 questions, offer suggestion instead
+- Celebrate breakthroughs: "That's huge."
+
+**Balanced Context Usage (v6.6):**
+- ONLY reference data when there's semantic match
+- "I feel lazy" + "deadline" entry → Connect
+- "I feel lazy" + "groceries" entry → Don't mention
+- If in doubt, just listen
+
+**Brevity Rule:** If user scrolls on mobile, response is too long (1-3 sentences max).
 
 **Example Queries:**
 - *"Why do I procrastinate?"*
@@ -397,16 +419,29 @@ Suggestions must:
 
 ## 5. User Flows
 
-### 5.1 Onboarding Flow: "The Golden Path" (v6.4 Streamlined)
+### 5.1 Onboarding Flow: "The Golden Path" (v6.6 - With Welcome Splash)
 
 **Goal:** Deliver an "Awe Moment" within 60 seconds without making user face a blank page.
+
+**NEW v6.6 - Welcome Splash Animation:**
+- First step in Guided Setup shows animated Mindstream logo + "Clarity Loop" visualization
+- 5 loop steps orbit the logo in a pentagon: Write → Notice → Act → Reflect → Adjust
+- Arc segments with colored connectors and arrows showing clockwise flow
+- Auto-advances after 3.8 seconds
+- Tagline: "Your Second Brain for Clarity"
+- Privacy note: "Private by design"
 
 **NEW v6.4 - Clean Slate Guarantee:**
 - When user starts Guided Setup, ALL existing data is deleted
 - `profile.created_at` is updated to NOW()
 - Ensures 100% fresh start with no data contamination from previous sessions
 
-**Steps (7 total - streamlined from 8 in v6.3):**
+**Steps (8 total - including new Splash step):**
+
+0. **Welcome Splash (NEW v6.6)**
+   - Animated Mindstream logo with pulsing teal glow
+   - Clarity Loop: Write → Notice → Act → Reflect → Adjust
+   - Auto-advances after 3.8 seconds (no user action required)
 
 1. **The Sanctuary (Privacy)**
    - Minimalist lock icon

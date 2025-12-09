@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 9, 2025 (v6.5 - Conversational Intelligence, Temporal Memory, Humanized Voice)  
+> **Last Updated:** December 9, 2025 (v6.6 - Context-Based Chat, Welcome Splash, Balanced Context Usage)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -44,7 +44,7 @@ New authenticated user (onboardingStep = 0)
     ↓
 LandingScreen displays
     ├── [Quick Start] → onboardingStep = 1 → Stream View (empty state)
-    └── [Guided Setup] → onboardingStep = 2 → OnboardingWizard
+    └── [Guided Setup] → onboardingStep = 2 → OnboardingWizard (Splash → Sanctuary → ...)
 ```
 
 ### 2.2 Quick Start Path (Fast Users)
@@ -72,6 +72,13 @@ Each action logs: `logEvent('insight_modal_action', { action: '...' })`
 ### 2.3 Guided Setup Path (Recommended)
 **Component:** [OnboardingWizard.tsx](file:///Users/director/Mindstream_v1/components/OnboardingWizard.tsx)
 
+**NEW v6.6 - Welcome Splash Animation:**
+- First step shows animated Mindstream logo + "Clarity Loop" visualization
+- 5 loop steps orbit the logo: Write → Notice → Act → Reflect → Adjust
+- Auto-advances after 3.8 seconds
+- Tagline: "Your Second Brain for Clarity"
+- Privacy note: "Private by design"
+
 **NEW v6.4 - Account Reset on Start:**
 - When user clicks "Guided Setup", ALL existing data is deleted
 - `resetAccountData()` clears: entries, habits, intentions, reflections, habit_logs, chart_insights, analytics
@@ -80,6 +87,7 @@ Each action logs: `logEvent('insight_modal_action', { action: '...' })`
 
 | Step | Name | User Action |
 |------|------|-------------|
+| 0 | **Splash (NEW)** | View animated Clarity Loop → Auto-advances (3.8s) |
 | 1 | The Sanctuary | View privacy message → "Enter" |
 | 2 | The Spark | Select emotion (8 options: Anxious, Excited, Overwhelmed, Calm, Tired, Inspired, Frustrated, Grateful) |
 | 3 | The Container | Select life area (Work, Relationships, Health, Self, Money) |
@@ -435,22 +443,42 @@ When chat has only welcome message, AI generates 3 contextual starters based on:
 5. Stream response chunk-by-chunk
 6. Optionally speak response (if TTS enabled)
 
-### 7.4 Conversational Intelligence System (NEW v6.5)
+### 7.4 Conversational Intelligence System (v6.6 - Context-Based Detection)
 
-The AI uses a 6-mode intent detection system before responding:
+**Core Principle:** READ THE ROOM, not keywords. Match user's energy.
 
-| Mode | User Signals | AI Response |
-|------|--------------|-------------|
-| **PROCESSING** | Venting, no question | Mirror feeling, don't solve. 1-2 sentences. |
-| **STUCK** | "I don't know what to do" | ONE fresh perspective. |
-| **EXPLORING** | Vague message | Ask ONE clarifying question. |
-| **CELEBRATING** | Sharing a win | Celebrate WITH them. |
-| **HELP-SEEKING** | Direct question | Personalized answer using their data. |
-| **PATTERN CONFRONTATION** | Repeated complaint | Validate first, then gently name pattern. |
+The AI uses an 8-pattern context-based detection system:
+
+| Pattern | User Signals | AI Response |
+|---------|--------------|-------------|
+| **GREETING** | "hey", "hi" at start | Greet warmly: "Hey! What's on your mind?" |
+| **VENTING** | Emotional, not asking | Mirror briefly. 1-2 sentences. Don't solve. |
+| **STUCK** | Going in circles | ONE fresh perspective. |
+| **EXPLORING** | Vague, unclear | Ask ONE clarifying question. |
+| **CELEBRATING** | Sharing a win | Celebrate WITH them. Let it land. |
+| **ASKING FOR HELP** | Direct question | Personalized answer using their data. |
+| **DISENGAGED** | Brief responses over 2+ messages | Back off: "I'm here when you're ready." |
+| **CONFUSED** | "what?", "huh?" | Simplify. Reset. Be direct. |
+
+**Critical Anti-Patterns:**
+- DON'T assume "hey" means they have nothing to say
+- DON'T diagnose disengagement from single word
+- DON'T keep asking questions if they're not engaging
+- DON'T ignore confusion — address it directly
+
+**Response Balance (NEW v6.6):**
+- 60% Listening/mirroring
+- 25% Questions
+- 15% Suggestions
+
+**Response Variety (NEW v6.6):**
+- "What's the one thing..." → max ONCE per conversation
+- After 2-3 questions, offer observation or suggestion instead
+- Celebrate breakthroughs: "That's huge." / "That's progress."
 
 **Brevity Rule:** If user has to scroll on mobile, response is too long.
 
-### 7.5 Temporal Memory (NEW v6.5)
+### 7.5 Temporal Memory (v6.5)
 
 AI can reference similar past moments:
 ```
@@ -462,13 +490,25 @@ AI can reference similar past moments:
 - Sentiment (strongest match)
 - Tags (overlap)
 
-### 7.6 Text-to-Speech (TTS)
+### 7.6 Balanced Context Usage (NEW v6.6)
+
+AI references user data ONLY when there's semantic alignment:
+
+| Scenario | Action |
+|----------|--------|
+| User says "I feel lazy" + has "deadline stress" entry | ✓ Connect: "Could the MVP deadline be weighing on you?" |
+| User says "I feel lazy" + has "groceries" entry | ✗ Don't mention — no connection |
+| User just needs to be heard | ✗ Don't analyze — just listen |
+
+**The Goal:** Feel like you KNOW them when it matters, not like you're constantly cross-referencing. If in doubt, just listen.
+
+### 7.7 Text-to-Speech (TTS)
 **Toggle:** Voice On/Off button in chat header
 - Enabled: AI responses are spoken aloud
 - Disabled: Text only
 - Preference persisted in localStorage
 
-### 7.7 AI RAG Context Injection
+### 7.8 AI RAG Context Injection
 
 The following data is injected into every chat response:
 
