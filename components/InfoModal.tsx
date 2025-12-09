@@ -37,7 +37,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
                         <p className="text-gray-300 text-sm leading-relaxed">
                             Mindstream helps you understand the hidden patterns between{' '}
                             <span className="text-brand-coral font-medium">how you feel</span> and{' '}
-                            <span className="text-brand-teal font-medium">what you do</span>.
+                            <span className="text-brand-teal font-medium">how you behave</span>.
                         </p>
                         <p className="text-gray-400 text-sm leading-relaxed mt-2">
                             It quietly learns from your entries, habits, and goals — then reflects those patterns back as clear, actionable insight.
@@ -59,7 +59,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
                             "You tend to feel stressed when you skip exercise for 3+ days."
                         </p>
                         <p className="text-gray-400 text-sm mt-3">
-                            This is where awareness turns into self-correction.
+                            This is where awareness starts changing behavior.
                         </p>
                     </section>
 
@@ -103,7 +103,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
                                     <span className="font-medium text-white">Chat</span>
                                 </div>
                                 <p className="text-gray-400 text-sm">
-                                    Think out loud with your AI companion. It remembers your history and responds with context.
+                                    Think out loud with your AI companion. It remembers your history and responds with real context.
                                 </p>
                             </div>
                         </div>
@@ -138,10 +138,10 @@ export const InfoModal: React.FC<InfoModalProps> = ({ onClose }) => {
                                 <span className="text-brand-teal font-bold text-base">3.</span>
                                 <div>
                                     <span className="text-white font-medium">Return for reflections</span>
-                                    <span className="text-gray-400"> to spot patterns</span>
+                                    <span className="text-gray-400"> to see what's actually changing</span>
                                     <div className="flex items-center gap-1 mt-1 text-gray-500 text-xs">
                                         <ArrowRight className="w-3 h-3" />
-                                        <span>You'll see connections you never noticed.</span>
+                                        <span>You'll spot connections you never noticed.</span>
                                     </div>
                                 </div>
                             </li>
