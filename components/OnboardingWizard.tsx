@@ -116,7 +116,7 @@ if (recognition) {
   recognition.lang = 'en-US';
 }
 
-// Splash Step Component - The Clarity Loop Introduction
+// Splash Step Component - The Clarity Loop Introduction (Circular Layout)
 const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [phase, setPhase] = React.useState<'logo' | 'loop' | 'tagline' | 'fade'>('logo');
 
@@ -131,59 +131,122 @@ const SplashStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     return () => timers.forEach(clearTimeout);
   }, [onComplete]);
 
+  // Pentagon positions (5 points evenly spaced around a circle)
+  // Starting from top and going clockwise
+  const radius = 110; // Distance from center
   const loopSteps = [
-    { label: 'Write', color: 'bg-brand-teal/20 text-brand-teal' },
-    { label: 'Notice', color: 'bg-violet-500/20 text-violet-400' },
-    { label: 'Act', color: 'bg-amber-500/20 text-amber-400' },
-    { label: 'Reflect', color: 'bg-blue-500/20 text-blue-400' },
-    { label: 'Adjust', color: 'bg-emerald-500/20 text-emerald-400' },
+    { label: 'Write', color: 'bg-brand-teal/30 text-brand-teal border-brand-teal/50', angle: -90 },      // Top
+    { label: 'Notice', color: 'bg-violet-500/30 text-violet-400 border-violet-500/50', angle: -18 },     // Top-right
+    { label: 'Act', color: 'bg-amber-500/30 text-amber-400 border-amber-500/50', angle: 54 },            // Bottom-right
+    { label: 'Reflect', color: 'bg-blue-500/30 text-blue-400 border-blue-500/50', angle: 126 },          // Bottom-left
+    { label: 'Adjust', color: 'bg-emerald-500/30 text-emerald-400 border-emerald-500/50', angle: 198 },  // Top-left
   ];
+
+  // Calculate position from angle
+  const getPosition = (angle: number) => {
+    const radians = (angle * Math.PI) / 180;
+    return {
+      x: Math.cos(radians) * radius,
+      y: Math.sin(radians) * radius,
+    };
+  };
 
   return (
     <div className={`flex flex-col items-center justify-center relative z-10 transition-opacity duration-500 ${phase === 'fade' ? 'opacity-0' : 'opacity-100'}`}>
-      {/* Logo */}
-      <div className={`transition-all duration-700 ${phase === 'logo' ? 'scale-100 opacity-100' : 'scale-90 opacity-100 -translate-y-4'}`}>
-        <div className="flex items-center gap-3 mb-8">
-          <img src="/mindstream-logo.svg" alt="Mindstream" className="w-14 h-14 drop-shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
-          <span className="text-3xl font-display font-bold text-white tracking-tight">Mindstream</span>
-        </div>
-      </div>
 
-      {/* The Clarity Loop */}
-      <div className={`transition-all duration-700 delay-100 ${phase === 'logo' ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
-        <div className="flex flex-wrap items-center justify-center gap-2 text-sm mb-6 max-w-xs">
-          {loopSteps.map((step, index) => (
-            <React.Fragment key={step.label}>
-              <span
-                className={`${step.color} px-3 py-1.5 rounded-full font-medium transition-all duration-500`}
+      {/* Circular Container */}
+      <div className="relative" style={{ width: radius * 2 + 80, height: radius * 2 + 80 }}>
+
+        {/* SVG for curved connecting lines */}
+        <svg
+          className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${phase === 'logo' ? 'opacity-0' : 'opacity-100'}`}
+          viewBox={`${-radius - 40} ${-radius - 40} ${(radius + 40) * 2} ${(radius + 40) * 2}`}
+        >
+          {/* Circular path connecting all points */}
+          <circle
+            cx="0"
+            cy="0"
+            r={radius}
+            fill="none"
+            stroke="url(#loopGradient)"
+            strokeWidth="2"
+            strokeDasharray="8 4"
+            className="opacity-30"
+          />
+          {/* Gradient definition */}
+          <defs>
+            <linearGradient id="loopGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#2dd4bf" />
+              <stop offset="25%" stopColor="#a78bfa" />
+              <stop offset="50%" stopColor="#fbbf24" />
+              <stop offset="75%" stopColor="#60a5fa" />
+              <stop offset="100%" stopColor="#34d399" />
+            </linearGradient>
+          </defs>
+          {/* Arrow heads on the circle */}
+          {loopSteps.map((step, index) => {
+            const nextStep = loopSteps[(index + 1) % loopSteps.length];
+            const midAngle = (step.angle + nextStep.angle) / 2 + (index === loopSteps.length - 1 ? 180 : 0);
+            const arrowPos = getPosition(midAngle + (index === 4 ? -36 : 0));
+            const arrowAngle = midAngle + 90;
+            return (
+              <polygon
+                key={`arrow-${index}`}
+                points="0,-4 4,4 -4,4"
+                fill="#4b5563"
+                transform={`translate(${arrowPos.x}, ${arrowPos.y}) rotate(${arrowAngle})`}
+                className={`transition-opacity duration-500`}
                 style={{
-                  transitionDelay: `${index * 150}ms`,
-                  opacity: phase !== 'logo' ? 1 : 0,
-                  transform: phase !== 'logo' ? 'scale(1)' : 'scale(0.8)'
+                  transitionDelay: `${index * 100 + 300}ms`,
+                  opacity: phase !== 'logo' ? 0.6 : 0
                 }}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Center: Mindstream Logo */}
+        <div
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ${phase === 'logo' ? 'scale-110' : 'scale-100'}`}
+        >
+          <img
+            src="/mindstream-logo.svg"
+            alt="Mindstream"
+            className="w-16 h-16 drop-shadow-[0_0_20px_rgba(45,212,191,0.5)]"
+          />
+        </div>
+
+        {/* Loop Steps positioned around the circle */}
+        {loopSteps.map((step, index) => {
+          const pos = getPosition(step.angle);
+          return (
+            <div
+              key={step.label}
+              className={`absolute left-1/2 top-1/2 transition-all duration-500`}
+              style={{
+                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px))`,
+                transitionDelay: `${index * 100}ms`,
+                opacity: phase !== 'logo' ? 1 : 0,
+                scale: phase !== 'logo' ? '1' : '0.5',
+              }}
+            >
+              <span
+                className={`${step.color} px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap shadow-lg`}
               >
                 {step.label}
               </span>
-              {index < loopSteps.length - 1 && (
-                <span
-                  className="text-gray-500 transition-opacity duration-300"
-                  style={{ transitionDelay: `${index * 150 + 75}ms`, opacity: phase !== 'logo' ? 1 : 0 }}
-                >
-                  →
-                </span>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* Tagline */}
-        <p className={`text-center text-gray-400 text-sm transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          Your Second Brain for Clarity
-        </p>
+            </div>
+          );
+        })}
       </div>
 
+      {/* Tagline below the circle */}
+      <p className={`text-center text-gray-400 text-sm mt-4 transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+        Your Second Brain for Clarity
+      </p>
+
       {/* Privacy note */}
-      <div className={`absolute bottom-[-80px] transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`mt-8 transition-all duration-500 ${phase === 'tagline' || phase === 'fade' ? 'opacity-100' : 'opacity-0'}`}>
         <div className="flex items-center gap-2 text-gray-500 text-xs">
           <span>🔒</span>
           <span>Private by design</span>
