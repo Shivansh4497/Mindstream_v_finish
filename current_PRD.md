@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.4  
-**Last Updated:** December 9, 2025 (MVP Hardening: Account Reset, AI Quality, Streamlined Onboarding)  
+**Version:** 6.5  
+**Last Updated:** December 9, 2025 (Conversational Intelligence, Temporal Memory, Humanized Voice)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -1262,7 +1262,126 @@ resetAccountData(userId):
 ```
 This guarantees 100% clean slate with no data contamination.
 
-### 8.5 Pattern Detection AI (Deferred in v6.4)
+### 8.5 Conversational Intelligence System (NEW v6.5)
+
+**Purpose:** Make the AI feel like a wise friend texting, not an assistant reporting.
+
+**The Core Principle:**
+> Users should feel *understood*, not *assisted*.
+
+#### 6-Mode Intent Detection
+
+The AI detects user intent before responding:
+
+| Mode | Signals | AI Response |
+|------|---------|-------------|
+| **1. PROCESSING** | Venting, emotional language | Mirror feeling. Don't solve. 1-2 sentences. |
+| **2. STUCK** | "I don't know what to do", paralysis | ONE fresh perspective. Not more analysis. |
+| **3. EXPLORING** | Vague message, "things feel off" | Ask ONE clarifying question. Don't assume. |
+| **4. CELEBRATING** | Sharing a win, excited tone | Celebrate WITH them. Don't push for more. |
+| **5. HELP-SEEKING** | Explicit question, asking for advice | Give ONE personalized answer using their data. |
+| **6. PATTERN CONFRONTATION** | Repeated complaint, avoidance | Validate first, then gently name pattern. |
+
+#### Humanized Voice Rules
+
+**DO:**
+- Use contractions: "You've", "That's", "I'm"
+- Keep SHORT: 1-3 sentences max
+- Sound like texting: "Yeah", "Makes sense", "Got it"
+- Use fillers: "Look,", "Honestly,"
+
+**NEVER SAY:**
+- "I understand how you feel" (AI doesn't)
+- "Have you tried..." (condescending)
+- "Practice mindfulness" (buzzword)
+- "Self-care is essential" (generic)
+
+#### Caring Confrontation
+
+The AI is NOT an echo chamber. It cares enough to tell the truth.
+
+**Formula:** Empathy First + Gentle Truth + Invitation to Grow
+
+```
+✓ "That sounds frustrating. This is the 4th time work stress has come up. 
+   What's the one thing that won't let go?"
+✗ "You keep complaining about the same thing."
+```
+
+#### Brevity Constraint
+
+**If user has to scroll on mobile, it's TOO LONG.**
+
+| Context | Max Length |
+|---------|------------|
+| Acknowledging emotion | 1-2 sentences |
+| Responding to venting | 1-2 sentences |
+| Offering perspective | 2-3 sentences |
+| Answering question | 2-3 sentences |
+
+---
+
+### 8.6 Temporal Memory System (NEW v6.5)
+
+**Purpose:** Enable "I remember when you felt this way..." style AI responses.
+
+**Implementation:**
+
+```typescript
+// dbService.ts → findSimilarMoments()
+Searches for past entries with:
+1. Matching sentiment (strongest match)
+2. Overlapping tags
+Excludes entries from last 48 hours (finds truly historical moments)
+Returns top 3 scored matches
+```
+
+**Context Injection:**
+```
+🕐 SIMILAR PAST MOMENTS:
+- [SENTIMENT MATCH] On November 15, feeling Anxious: "Had too many deadlines..."
+- [TAG MATCH] On October 20, feeling Overwhelmed: "Project stress..."
+
+When referencing these, use phrases like:
+- "I remember in November you felt similar..."
+- "The last time this came up, you mentioned..."
+```
+
+**Result:** AI feels like it remembers the user's journey.
+
+---
+
+### 8.7 Situational Action System (NEW v6.5)
+
+**Purpose:** Suggest actions only when appropriate, never pushy.
+
+**90/10 Balance:**
+- 90% of responses: Empathetic listener
+- 10% of responses: "Here's a small thing you could try"
+
+**When to Suggest Actions:**
+1. User explicitly asks "what should I do?"
+2. User feels "stuck", "overwhelmed"
+3. Recurring pattern detected + solution available
+4. Topic matches their pending goals/habits
+
+**When NOT to Suggest:**
+- User is venting → Just empathize
+- User is celebrating → Just celebrate
+- User processing grief → Just be present
+- First message → Just connect
+- No personalized data → Don't suggest generic advice
+
+**Personalization Requirement:**
+```
+Actions MUST reference user's actual data:
+✓ "You have 'Finish proposal' due this week — start with the intro?"
+✗ "Try to prioritize your tasks" (generic)
+```
+
+---
+
+### 8.8 Pattern Detection AI (Deferred in v6.5)
 
 **Purpose:** Automatically identify behavioral patterns without user input.
 

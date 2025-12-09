@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 9, 2025 (v6.4 - MVP Hardening: Account Reset, AI Quality, Streamlined Onboarding)  
+> **Last Updated:** December 9, 2025 (v6.5 - Conversational Intelligence, Temporal Memory, Humanized Voice)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -430,15 +430,61 @@ When chat has only welcome message, AI generates 3 contextual starters based on:
 **AI Response Process:**
 1. Extract keywords from user message
 2. RAG: Search entries for relevant context
-3. Inject context + personality into prompt
-4. Stream response chunk-by-chunk
-5. Optionally speak response (if TTS enabled)
+3. Detect user intent (6 modes)
+4. Inject context + personality + temporal memory
+5. Stream response chunk-by-chunk
+6. Optionally speak response (if TTS enabled)
 
-### 7.4 Text-to-Speech (TTS)
+### 7.4 Conversational Intelligence System (NEW v6.5)
+
+The AI uses a 6-mode intent detection system before responding:
+
+| Mode | User Signals | AI Response |
+|------|--------------|-------------|
+| **PROCESSING** | Venting, no question | Mirror feeling, don't solve. 1-2 sentences. |
+| **STUCK** | "I don't know what to do" | ONE fresh perspective. |
+| **EXPLORING** | Vague message | Ask ONE clarifying question. |
+| **CELEBRATING** | Sharing a win | Celebrate WITH them. |
+| **HELP-SEEKING** | Direct question | Personalized answer using their data. |
+| **PATTERN CONFRONTATION** | Repeated complaint | Validate first, then gently name pattern. |
+
+**Brevity Rule:** If user has to scroll on mobile, response is too long.
+
+### 7.5 Temporal Memory (NEW v6.5)
+
+AI can reference similar past moments:
+```
+"I remember last month when you felt this way..."
+"The last time you mentioned work stress..."
+```
+
+**Source:** `findSimilarMoments()` searches for entries with matching:
+- Sentiment (strongest match)
+- Tags (overlap)
+
+### 7.6 Text-to-Speech (TTS)
 **Toggle:** Voice On/Off button in chat header
 - Enabled: AI responses are spoken aloud
 - Disabled: Text only
 - Preference persisted in localStorage
+
+### 7.7 AI RAG Context Injection
+
+The following data is injected into every chat response:
+
+| Data Source | Max Items | Function |
+|-------------|-----------|----------|
+| Recent entries | 10 | `getEntries()` |
+| Pending intentions | 10 | `getIntentions()` |
+| Active habits | 15 | `getHabits()` |
+| Latest reflection | 1 | `getReflections()` |
+| Similar past moments | 3 | `findSimilarMoments()` |
+| Search results | 10 | `searchEntries()` |
+
+**Anti-Hallucination Rules:**
+- Explicit entry count shown to AI
+- Brand new users (≤2 entries) get warning not to claim patterns
+- Unambiguous date formatting (December 9, 2025)
 
 ---
 
