@@ -34,6 +34,7 @@ import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ReflectionUnlockModal } from './components/ReflectionUnlockModal';
+import { InfoModal } from './components/InfoModal';
 import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewService';
 
 import { useAppLogic } from './hooks/useAppLogic';
@@ -66,6 +67,7 @@ export const MindstreamApp: React.FC = () => {
     const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
     const [intentionToEdit, setIntentionToEdit] = useState<Intention | null>(null);
     const [showThematicModal, setShowThematicModal] = useState(false);
+    const [showInfoModal, setShowInfoModal] = useState(false);
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [thematicReflection, setThematicReflection] = useState<string | null>(null);
     const [isGeneratingThematic, setIsGeneratingThematic] = useState(false);
@@ -291,6 +293,7 @@ export const MindstreamApp: React.FC = () => {
                 <Header
                     onSearchClick={() => setShowSearchModal(true)}
                     onSettingsClick={() => setView('settings')}
+                    onInfoClick={() => setShowInfoModal(true)}
                 />
                 <AIStatusBanner status={state.aiStatus} error={state.aiError} />
 
@@ -484,6 +487,7 @@ export const MindstreamApp: React.FC = () => {
 
                 {/* Modals */}
                 {showSearchModal && <SearchModal entries={state.entries} reflections={state.reflections} onClose={() => setShowSearchModal(false)} />}
+                {showInfoModal && <InfoModal onClose={() => setShowInfoModal(false)} />}
                 {state.toast && <Toast message={state.toast.message} onDismiss={() => actions.setToast(null)} />}
                 {entryToDelete && <DeleteConfirmationModal onConfirm={() => { actions.handleDeleteEntry(entryToDelete); setEntryToDelete(null); }} onCancel={() => setEntryToDelete(null)} />}
                 {entryToEdit && <EditEntryModal entry={entryToEdit} onSave={async (txt) => { await actions.handleEditEntry(entryToEdit, txt); setEntryToEdit(null); }} onCancel={() => setEntryToEdit(null)} />}

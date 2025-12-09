@@ -5,15 +5,16 @@ import { LogoutIcon } from './icons/LogoutIcon';
 import { TrashIcon } from './icons/TrashIcon';
 // MindstreamLogo is now a static SVG file in public/
 import * as db from '../services/dbService';
-import { Settings } from 'lucide-react';
+import { Settings, Info } from 'lucide-react';
 
 interface HeaderProps {
   onSearchClick: () => void;
   onSettingsClick?: () => void;
+  onInfoClick?: () => void;
   subtitle?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onSearchClick, onSettingsClick, subtitle }) => {
+export const Header: React.FC<HeaderProps> = ({ onSearchClick, onSettingsClick, onInfoClick, subtitle }) => {
   const { profile, logout, user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -61,6 +62,13 @@ export const Header: React.FC<HeaderProps> = ({ onSearchClick, onSettingsClick, 
                 <div className="px-4 py-2 text-sm text-gray-400 border-b border-white/10">
                   {profile.email}
                 </div>
+                <button
+                  onClick={() => { setMenuOpen(false); onInfoClick?.(); }}
+                  className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                >
+                  <Info className="w-4 h-4" />
+                  How It Works
+                </button>
                 <button
                   onClick={() => { setMenuOpen(false); onSettingsClick?.(); }}
                   className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
