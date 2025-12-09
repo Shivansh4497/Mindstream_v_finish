@@ -40,9 +40,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return saved ? JSON.parse(saved) : false;
   });
   const [showSharingModal, setShowSharingModal] = useState(false);
-  const [userMessageCount, setUserMessageCount] = useState(0);
-  const lastSavedMessageCount = useRef(0);
-  const wasLoadingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,45 +66,44 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [chatSharingPromptShown]);
 
   // Count user messages and trigger prompt after 3rd
+  // ONLY show if: not shown before, not currently showing, AND sharing not already enabled
   useEffect(() => {
     const userMessages = messages.filter(m => m.sender === 'user');
-    setUserMessageCount(userMessages.length);
 
-    // Show prompt after 3rd user message, if not shown before
-    if (userMessages.length >= 3 && !chatSharingPromptShown && !showSharingModal) {
+    // Show prompt after 3rd user message, if:
+    // - Not shown before (lifetime check)
+    // - Not currently showing
+    // - Sharing is NOT already enabled (don't prompt if they already turned it on manually)
+    if (userMessages.length >= 3 && !chatSharingPromptShown && !showSharingModal && !chatSharingEnabled) {
       setShowSharingModal(true);
       if (userId) {
         logEvent(userId, 'chat_sharing_prompt_shown');
       }
     }
-  }, [messages, chatSharingPromptShown, showSharingModal, userId]);
+  }, [messages, chatSharingPromptShown, showSharingModal, chatSharingEnabled, userId]);
 
-  // Save chat feedback after AI finishes responding (when isLoading goes false)
+  // Save chat feedback ONCE when component unmounts (user leaves chat)
+  // This prevents multiple rows per session - only ONE save per chat session
   useEffect(() => {
-    // Detect when AI just finished responding
-    if (wasLoadingRef.current && !isLoading && chatSharingEnabled && userId) {
-      // Only save if we have new messages since last save
-      if (messages.length > lastSavedMessageCount.current) {
+    return () => {
+      // Save on unmount if sharing is enabled and we have messages
+      const sharingEnabled = localStorage.getItem('chatSharingEnabled');
+      if (sharingEnabled === 'true' && userId && messages.length > 1) {
         const chatMessages: ChatMessage[] = messages.map(m => ({
           sender: m.sender,
           text: m.text,
           timestamp: new Date().toISOString()
         }));
 
-        saveChatFeedback(userId, chatMessages, currentPersonality, entryPoint)
-          .then(success => {
-            if (success) {
-              lastSavedMessageCount.current = messages.length;
-              logEvent(userId, 'chat_feedback_session_saved', {
-                message_count: chatMessages.length,
-                entry_point: entryPoint
-              });
-            }
-          });
+        // Fire and forget - component is unmounting
+        saveChatFeedback(userId, chatMessages, currentPersonality, entryPoint);
+        logEvent(userId, 'chat_feedback_session_saved', {
+          message_count: chatMessages.length,
+          entry_point: entryPoint
+        });
       }
-    }
-    wasLoadingRef.current = isLoading;
-  }, [isLoading, chatSharingEnabled, userId, messages, currentPersonality, entryPoint]);
+    };
+  }, [userId, messages, currentPersonality, entryPoint]);
 
   // Auto-speak AI responses
   useEffect(() => {
