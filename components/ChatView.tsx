@@ -41,6 +41,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
   });
   const [showSharingModal, setShowSharingModal] = useState(false);
 
+  // Refs to store latest values for unmount-only save (avoid stale closure)
+  const messagesRef = useRef(messages);
+  const userIdRef = useRef(userId);
+  const personalityRef = useRef(currentPersonality);
+  const entryPointRef = useRef(entryPoint);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    messagesRef.current = messages;
+    userIdRef.current = userId;
+    personalityRef.current = currentPersonality;
+    entryPointRef.current = entryPoint;
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -82,28 +96,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [messages, chatSharingPromptShown, showSharingModal, chatSharingEnabled, userId]);
 
-  // Save chat feedback ONCE when component unmounts (user leaves chat)
-  // This prevents multiple rows per session - only ONE save per chat session
+  // Save chat feedback ONCE on TRUE component unmount only
+  // Using refs to avoid stale closures - empty deps means only runs on unmount
   useEffect(() => {
     return () => {
-      // Save on unmount if sharing is enabled and we have messages
       const sharingEnabled = localStorage.getItem('chatSharingEnabled');
-      if (sharingEnabled === 'true' && userId && messages.length > 1) {
-        const chatMessages: ChatMessage[] = messages.map(m => ({
+      const currentMessages = messagesRef.current;
+      const currentUserId = userIdRef.current;
+      const currentPersonality = personalityRef.current;
+      const currentEntryPoint = entryPointRef.current;
+
+      if (sharingEnabled === 'true' && currentUserId && currentMessages.length > 1) {
+        const chatMessages: ChatMessage[] = currentMessages.map(m => ({
           sender: m.sender,
           text: m.text,
           timestamp: new Date().toISOString()
         }));
 
-        // Fire and forget - component is unmounting
-        saveChatFeedback(userId, chatMessages, currentPersonality, entryPoint);
-        logEvent(userId, 'chat_feedback_session_saved', {
+        saveChatFeedback(currentUserId, chatMessages, currentPersonality, currentEntryPoint);
+        logEvent(currentUserId, 'chat_feedback_session_saved', {
           message_count: chatMessages.length,
-          entry_point: entryPoint
+          entry_point: currentEntryPoint
         });
       }
     };
-  }, [userId, messages, currentPersonality, entryPoint]);
+  }, []); // Empty deps = TRUE unmount only
 
   // Auto-speak AI responses
   useEffect(() => {
