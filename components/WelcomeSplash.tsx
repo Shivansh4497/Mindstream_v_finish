@@ -41,18 +41,11 @@ export const WelcomeSplash: React.FC<WelcomeSplashProps> = ({ onComplete }) => {
             <div className={`transition-all duration-700 ${phase === 'logo' ? 'scale-100 opacity-100' : 'scale-90 opacity-100 -translate-y-4'
                 }`}>
                 <div className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-teal to-teal-600 flex items-center justify-center shadow-lg shadow-brand-teal/30">
-                        <svg
-                            viewBox="0 0 24 24"
-                            className="w-7 h-7 text-brand-indigo"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 6v6l4 2" />
-                        </svg>
-                    </div>
+                    <img
+                        src="/mindstream-logo.svg"
+                        alt="Mindstream"
+                        className="w-14 h-14 drop-shadow-[0_0_12px_rgba(45,212,191,0.6)]"
+                    />
                     <span className="text-3xl font-display font-bold text-white tracking-tight">
                         Mindstream
                     </span>
