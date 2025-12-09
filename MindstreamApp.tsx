@@ -34,6 +34,7 @@ import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ReflectionUnlockModal } from './components/ReflectionUnlockModal';
+import { WelcomeSplash } from './components/WelcomeSplash';
 import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewService';
 
 import { useAppLogic } from './hooks/useAppLogic';
@@ -88,6 +89,11 @@ export const MindstreamApp: React.FC = () => {
     // Progressive disclosure: track if user has visited Insights tab after unlock
     const hasVisitedInsightsKey = user ? `hasVisitedInsights_${user.id}` : 'hasVisitedInsights';
     const [hasVisitedInsights, setHasVisitedInsights] = useLocalStorage<boolean>(hasVisitedInsightsKey, false);
+
+    // Welcome splash: show once per user
+    const hasSeenSplashKey = user ? `hasSeenWelcomeSplash_${user.id}` : 'hasSeenWelcomeSplash';
+    const [hasSeenWelcomeSplash, setHasSeenWelcomeSplash] = useLocalStorage<boolean>(hasSeenSplashKey, false);
+    const [showWelcomeSplash, setShowWelcomeSplash] = useState(false);
 
     // Count real entries (exclude temp entries)
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
@@ -222,7 +228,19 @@ export const MindstreamApp: React.FC = () => {
         setPendingUnlockType(null);
     };
 
-    // Show Landing Screen for new users
+    // Show Welcome Splash for first-time users
+    if (onboardingStep === ONBOARDING_NOT_STARTED && user && !hasSeenWelcomeSplash) {
+        return (
+            <WelcomeSplash
+                onComplete={() => {
+                    setHasSeenWelcomeSplash(true);
+                    setShowWelcomeSplash(false);
+                }}
+            />
+        );
+    }
+
+    // Show Landing Screen for new users (after splash)
     if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
         return (
             <LandingScreen
