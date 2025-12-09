@@ -440,7 +440,13 @@ export const MindstreamApp: React.FC = () => {
                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                                 className="absolute inset-0 flex flex-col"
                             >
-                                <ChatView messages={state.messages} isLoading={state.isChatLoading} onAddSuggestion={() => { }} />
+                                <ChatView
+                                    messages={state.messages}
+                                    isLoading={state.isChatLoading}
+                                    onAddSuggestion={() => { }}
+                                    userId={user?.id}
+                                    entryPoint={onboardingStep === ONBOARDING_QUICK_START ? 'quick_start' : onboardingStep === ONBOARDING_GUIDED_COMPLETE ? 'guided' : 'organic'}
+                                />
                                 {state.messages.length === 1 && <SuggestionChips starters={chatStarters} isLoading={isGeneratingStarters} onStarterClick={actions.handleSendMessage} />}
                                 <ChatInputBar onSendMessage={actions.handleSendMessage} isLoading={state.isChatLoading} />
                             </motion.div>

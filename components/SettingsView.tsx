@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, FileJson, FileText, Loader2, Bug } from 'lucide-react';
+import { ArrowLeft, Download, FileJson, FileText, Loader2, Bug, FlaskConical, Trash2 } from 'lucide-react';
 import { PersonalitySelector } from './PersonalitySelector';
 import { supabase } from '../services/supabaseClient';
 import { fetchAllUserData, downloadData } from '../services/dataExportService';
+import { getChatFeedbackCount, deleteUserChatFeedback, logEvent } from '../services/dbService';
 import { useToast } from './Toast';
 import { InsightValidator } from './debug/InsightValidator';
 
@@ -14,7 +15,21 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
     const [isExporting, setIsExporting] = useState(false);
     const [showDebug, setShowDebug] = useState(false);
+    const [sharedChatCount, setSharedChatCount] = useState(0);
+    const [isDeletingChats, setIsDeletingChats] = useState(false);
     const { showToast } = useToast();
+
+    // Fetch shared chat count on mount
+    useEffect(() => {
+        const fetchCount = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const count = await getChatFeedbackCount(user.id);
+                setSharedChatCount(count);
+            }
+        };
+        fetchCount();
+    }, []);
 
     const handleExport = async (type: 'json' | 'markdown') => {
         setIsExporting(true);
@@ -32,6 +47,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             showToast('Failed to export data', 'error');
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleDeleteSharedChats = async () => {
+        if (!confirm('Are you sure you want to delete all your shared conversations? This cannot be undone.')) {
+            return;
+        }
+
+        setIsDeletingChats(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            const success = await deleteUserChatFeedback(user.id);
+            if (success) {
+                await logEvent(user.id, 'chat_feedback_deleted', { count: sharedChatCount });
+                setSharedChatCount(0);
+                showToast('Shared conversations deleted', 'success');
+            } else {
+                showToast('Failed to delete shared conversations', 'error');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            showToast('Failed to delete shared conversations', 'error');
+        } finally {
+            setIsDeletingChats(false);
         }
     };
 
@@ -65,34 +106,61 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
                             <p className="text-gray-400">Manage your data ownership and privacy settings.</p>
                         </div>
 
-                        <div className="bg-dark-surface border border-white/10 rounded-xl p-6">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Download className="w-5 h-5 text-brand-teal" />
-                                Export Your Data
-                            </h3>
-                            <p className="text-gray-400 text-sm mb-6">
-                                Download a complete copy of your journal entries, habits, intentions, and reflections.
-                                You own your data.
-                            </p>
+                        <div className="space-y-4">
+                            {/* Export Data Card */}
+                            <div className="bg-dark-surface border border-white/10 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                    <Download className="w-5 h-5 text-brand-teal" />
+                                    Export Your Data
+                                </h3>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    Download a complete copy of your journal entries, habits, intentions, and reflections.
+                                    You own your data.
+                                </p>
 
-                            <div className="flex flex-wrap gap-4">
-                                <button
-                                    onClick={() => handleExport('json')}
-                                    disabled={isExporting}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileJson className="w-4 h-4 text-yellow-400" />}
-                                    <span>Export as JSON</span>
-                                </button>
+                                <div className="flex flex-wrap gap-4">
+                                    <button
+                                        onClick={() => handleExport('json')}
+                                        disabled={isExporting}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileJson className="w-4 h-4 text-yellow-400" />}
+                                        <span>Export as JSON</span>
+                                    </button>
 
-                                <button
-                                    onClick={() => handleExport('markdown')}
-                                    disabled={isExporting}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4 text-blue-400" />}
-                                    <span>Export as Markdown</span>
-                                </button>
+                                    <button
+                                        onClick={() => handleExport('markdown')}
+                                        disabled={isExporting}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4 text-blue-400" />}
+                                        <span>Export as Markdown</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Shared Conversations Card */}
+                            <div className="bg-dark-surface border border-white/10 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                    <FlaskConical className="w-5 h-5 text-brand-teal" />
+                                    Shared Conversations
+                                </h3>
+                                <p className="text-gray-400 text-sm mb-4">
+                                    {sharedChatCount > 0
+                                        ? `You've shared ${sharedChatCount} conversation${sharedChatCount === 1 ? '' : 's'} to help improve AI.`
+                                        : 'You haven\'t shared any conversations yet.'}
+                                </p>
+
+                                {sharedChatCount > 0 && (
+                                    <button
+                                        onClick={handleDeleteSharedChats}
+                                        disabled={isDeletingChats}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {isDeletingChats ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                        <span>Delete All Shared Chats</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </section>

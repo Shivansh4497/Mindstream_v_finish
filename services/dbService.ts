@@ -1107,7 +1107,15 @@ export type AnalyticsEvent =
     | 'app_opened'
     | 'chat_message_sent'
     | 'voice_input_used'
-    | 'error_event';
+    | 'error_event'
+    // Chat feedback events
+    | 'chat_sharing_prompt_shown'
+    | 'chat_sharing_prompt_accepted'
+    | 'chat_sharing_prompt_declined'
+    | 'chat_sharing_enabled'
+    | 'chat_sharing_disabled'
+    | 'chat_feedback_session_saved'
+    | 'chat_feedback_deleted';
 
 export const logEvent = async (
     userId: string,
@@ -1138,5 +1146,100 @@ export const logEvent = async (
     } catch (error) {
         // Silent fail - analytics should never block user actions
         console.warn('Analytics event failed:', eventName, error);
+    }
+};
+
+// --- CHAT FEEDBACK (Opt-In Sharing for AI Quality Improvement) ---
+
+export interface ChatMessage {
+    id?: string;
+    sender: 'user' | 'ai';
+    text: string;
+    timestamp?: string;
+}
+
+export type EntryPoint = 'quick_start' | 'guided' | 'organic';
+
+/**
+ * Save a chat conversation for founder review (opt-in only).
+ * Caps conversation at 25 messages to prevent JSON bloat.
+ */
+export const saveChatFeedback = async (
+    userId: string,
+    conversation: ChatMessage[],
+    personality: string,
+    entryPoint: EntryPoint
+): Promise<boolean> => {
+    if (!supabase) return false;
+
+    try {
+        // Cap at 25 messages
+        const cappedConversation = conversation.slice(-25);
+
+        const { error } = await supabase.from('chat_feedback').insert({
+            user_id: userId,
+            conversation: cappedConversation,
+            personality,
+            entry_point: entryPoint,
+            message_count: cappedConversation.length
+        });
+
+        if (error) {
+            console.error('Failed to save chat feedback:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error saving chat feedback:', error);
+        return false;
+    }
+};
+
+/**
+ * Get count of shared conversations for a user (for Settings display).
+ */
+export const getChatFeedbackCount = async (userId: string): Promise<number> => {
+    if (!supabase) return 0;
+
+    try {
+        const { count, error } = await supabase
+            .from('chat_feedback')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Failed to get chat feedback count:', error);
+            return 0;
+        }
+
+        return count || 0;
+    } catch (error) {
+        console.error('Error getting chat feedback count:', error);
+        return 0;
+    }
+};
+
+/**
+ * Delete all shared chat feedback for a user.
+ */
+export const deleteUserChatFeedback = async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
+
+    try {
+        const { error } = await supabase
+            .from('chat_feedback')
+            .delete()
+            .eq('user_id', userId);
+
+        if (error) {
+            console.error('Failed to delete chat feedback:', error);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting chat feedback:', error);
+        return false;
     }
 };
