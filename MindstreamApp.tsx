@@ -91,9 +91,15 @@ export const MindstreamApp: React.FC = () => {
     const [hasVisitedInsights, setHasVisitedInsights] = useLocalStorage<boolean>(hasVisitedInsightsKey, false);
 
     // Welcome splash: show once per user
-    const hasSeenSplashKey = user ? `hasSeenWelcomeSplash_${user.id}` : 'hasSeenWelcomeSplash';
-    const [hasSeenWelcomeSplash, setHasSeenWelcomeSplash] = useLocalStorage<boolean>(hasSeenSplashKey, false);
-    const [showWelcomeSplash, setShowWelcomeSplash] = useState(false);
+    // IMPORTANT: Only use user-specific key, never a generic fallback
+    const hasSeenSplashKey = user?.id ? `hasSeenWelcomeSplash_${user.id}` : null;
+    const [storedHasSeenSplash, setStoredHasSeenSplash] = useLocalStorage<boolean>(
+        hasSeenSplashKey || 'hasSeenWelcomeSplash_temp',
+        false
+    );
+    // Only trust the stored value if we have a real user-specific key
+    const hasSeenWelcomeSplash = hasSeenSplashKey ? storedHasSeenSplash : false;
+    const setHasSeenWelcomeSplash = setStoredHasSeenSplash;
 
     // Count real entries (exclude temp entries)
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
