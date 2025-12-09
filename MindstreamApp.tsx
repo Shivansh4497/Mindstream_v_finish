@@ -228,13 +228,13 @@ export const MindstreamApp: React.FC = () => {
         setPendingUnlockType(null);
     };
 
-    // Show Welcome Splash for first-time users
-    if (onboardingStep === ONBOARDING_NOT_STARTED && user && !hasSeenWelcomeSplash) {
+    // Show Welcome Splash for users who haven't seen it (regardless of onboarding state)
+    // This ensures it shows even for account re-signups
+    if (user && !hasSeenWelcomeSplash) {
         return (
             <WelcomeSplash
                 onComplete={() => {
                     setHasSeenWelcomeSplash(true);
-                    setShowWelcomeSplash(false);
                 }}
             />
         );
