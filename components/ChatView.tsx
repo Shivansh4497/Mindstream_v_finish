@@ -54,6 +54,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // Chat Takeaways state
   const [isSavingTakeaway, setIsSavingTakeaway] = useState(false);
   const [lastSavedTakeawayId, setLastSavedTakeawayId] = useState<string | null>(null);
+  const [takeawayToast, setTakeawayToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Calculate if takeaway button should show (3+ exchanges AND 30+ user words)
   const showTakeawayButton = useMemo(() => {
@@ -63,6 +64,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
     );
     return messages.length >= 6 && userWordCount >= 30;
   }, [messages]);
+
+  // Auto-dismiss takeaway toast after 3 seconds
+  useEffect(() => {
+    if (takeawayToast) {
+      const timer = setTimeout(() => setTakeawayToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [takeawayToast]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -231,7 +240,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       // Call AI to generate summary
       const startTime = Date.now();
-      const response = await callAIProxy('chat-summary', { messages: formattedMessages });
+      const response = await callAIProxy<{ title: string; summary: string }>('chat-summary', { messages: formattedMessages });
       const latency = Date.now() - startTime;
 
       if (!response?.title || !response?.summary) {
@@ -262,32 +271,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
       // Notify parent if provided
       onTakeawaySaved?.(savedEntry);
 
-      // Show toast with undo
-      setToast?.({
-        message: 'Takeaway saved ✓',
-        action: {
-          label: 'Undo',
-          onClick: async () => {
-            try {
-              const { deleteEntry } = await import('../services/dbService');
-              const success = await deleteEntry(savedEntry.id);
-              if (success) {
-                logEvent(userId, 'takeaway_undone', { generation_id: savedEntry.source_meta?.generation_id });
-                setToast?.({ message: 'Takeaway removed' });
-              } else {
-                throw new Error('Delete failed');
-              }
-            } catch {
-              logEvent(userId, 'takeaway_undo_failed');
-              setToast?.({ message: "Couldn't undo, please try again" });
-            }
-          }
-        }
-      });
+      // Show success toast (internal)
+      setTakeawayToast({ message: 'Takeaway saved to Stream! ✓', type: 'success' });
+
+      // Also call external if provided
+      setToast?.({ message: 'Takeaway saved ✓' });
 
     } catch (error) {
       console.error('Error saving takeaway:', error);
       logEvent(userId, 'takeaway_generation_failed', { error: String(error) });
+      setTakeawayToast({ message: 'Failed to save. Try again.', type: 'error' });
       setToast?.({ message: 'Failed to save takeaway. Try again.' });
     } finally {
       setIsSavingTakeaway(false);
@@ -404,6 +397,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onAccept={handleAcceptSharing}
           onDecline={handleDeclineSharing}
         />
+      )}
+
+      {/* Takeaway Toast */}
+      {takeawayToast && (
+        <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg animate-fade-in-up ${takeawayToast.type === 'success'
+            ? 'bg-green-600 text-white'
+            : 'bg-red-600 text-white'
+          }`}>
+          {takeawayToast.message}
+        </div>
       )}
     </>
   );

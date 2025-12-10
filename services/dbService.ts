@@ -1165,7 +1165,15 @@ export type AnalyticsEvent =
     | 'chat_sharing_enabled'
     | 'chat_sharing_disabled'
     | 'chat_feedback_session_saved'
-    | 'chat_feedback_deleted';
+    | 'chat_feedback_deleted'
+    // Takeaway events
+    | 'takeaway_button_shown'
+    | 'takeaway_button_clicked'
+    | 'takeaway_saved'
+    | 'takeaway_edited'
+    | 'takeaway_undone'
+    | 'takeaway_generation_failed'
+    | 'takeaway_undo_failed';
 
 export const logEvent = async (
     userId: string,
