@@ -446,20 +446,28 @@ Entries: ${entries || 'No entries today'}
 Pending Goals: ${intentions || 'No active goals'}
 Habits Already Tracked: ${habits || 'No habits'}
 
+VOICE RULES (CRITICAL):
+- ALWAYS use second-person: "you felt", "you did", "your day"
+- NEVER use third-person: "they", "the user", "one"
+- Speak directly TO the user, not ABOUT them
+- Use pattern language when relevant: "you tend to...", "when you..., you usually..."
+
 YOUR TASK - SUMMARY (3-5 sentences):
-- Paint a picture of their day. What was the emotional arc?
-- Connect their mood (from entries) to their actions (habits completed, goals progressed)
-- Celebrate ONE specific win - be precise, name the actual thing they did
+- Paint a picture of YOUR day. What was the emotional arc?
+- Connect your mood (from entries) to your actions (habits completed, goals progressed)
+- Celebrate ONE specific win - be precise, name the actual thing you did
 - Offer ONE gentle observation about what could improve - be kind, not preachy
+- Don't include exact timestamps - use natural time references ("this morning", "later")
 
 YOUR TASK - SUGGESTIONS (max 1, can be empty):
-CRITICAL: Do NOT suggest something they already track as a habit! Check "Habits Already Tracked" above.
+CRITICAL: Do NOT suggest something already tracked as a habit! Check "Habits Already Tracked" above.
 - Only suggest a NEW intention/goal, never an existing habit
-- MUST reference SPECIFIC items from their entries or pending goals
+- MUST reference SPECIFIC items from the entries or pending goals
+- The suggestion must DIRECTLY relate to something mentioned in the entries
 - Format: 5-12 words max, actionable
 - BAD: "Prioritize your goals" (generic)
-- BAD: "Exercise daily" (if they already have an exercise habit)
-- GOOD: "Tomorrow: finish the migration task" (specific goal from their data)
+- BAD: "Take a break before emails" (if emails weren't mentioned)
+- GOOD: "Tomorrow: finish the Mindstream migration" (specific from data)
 - If day was balanced or data is sparse, return empty array []
 
 Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}`;
@@ -478,16 +486,23 @@ Entries: ${entries || 'No entries this week'}
 Goals: ${intentions || 'No active goals'}
 Habits Tracked: ${habits || 'No habits'}
 
+VOICE RULES (CRITICAL):
+- ALWAYS use second-person: "you felt", "you did", "your week"
+- NEVER use third-person: "they", "the user", "one"
+- Speak directly TO the user, not ABOUT them
+- Use pattern language: "you tend to...", "when you..., you usually..."
+
 YOUR TASK - SUMMARY (3-5 sentences):
-- What was the dominant emotional theme this week?
-- How did they progress on their stated goals? Be specific about which ones
-- What pattern do you notice in their entries?
-- End with an encouraging observation about their trajectory
+- What was the dominant emotional theme YOUR week?
+- How did YOU progress on your stated goals? Be specific about which ones
+- What pattern do you notice in your entries?
+- End with an encouraging observation about YOUR trajectory
 
 YOUR TASK - SUGGESTIONS (max 1):
 CRITICAL: Must be 15 words or fewer. One short sentence only.
-- MUST reference a SPECIFIC goal or pattern from their data
-- Do NOT suggest things they already track as habits
+- MUST reference a SPECIFIC goal or pattern from the data
+- The suggestion must DIRECTLY relate to something mentioned in the entries
+- Do NOT suggest things already tracked as habits
 - BAD: "Given the consistent theme of sleep affecting your performance..." (too long!)
 - GOOD: "Break 'Launch project' into 3 small daily tasks" (short, specific)
 - If week was balanced, return empty array []
@@ -507,18 +522,24 @@ THIS MONTH'S DATA:
 Entries: ${entries || 'No entries this month'}
 Goals: ${intentions || 'No active goals'}
 
+VOICE RULES (CRITICAL):
+- ALWAYS use second-person: "you", "your", "you've"
+- NEVER use third-person: "they", "the user", "one"
+- Speak directly TO the user, not ABOUT them
+
 YOUR TASK - SUMMARY (4-6 sentences as ONE paragraph):
 Write a cohesive narrative paragraph that includes:
-- A "chapter title" feeling (e.g., "This was the month of...")
-- The sentiment arc: how did they start vs end the month?
-- Which goals saw progress? Which got stuck? Be specific by name
-- What life area (Health, Career, Relationships, Growth) got the most attention?
-- End with an inspiring observation about their growth
+- A "chapter title" feeling (e.g., "This was YOUR month of...")
+- The sentiment arc: how did YOU start vs end the month?
+- Which of YOUR goals saw progress? Which got stuck? Be specific by name
+- What life area (Health, Career, Relationships, Growth) got the most of YOUR attention?
+- End with an inspiring observation about YOUR growth
 
 IMPORTANT: Return summary as a PLAIN TEXT string, not nested JSON. No chapter_title field, no sentiment_arc field - just one flowing paragraph.
 
 YOUR TASK - SUGGESTIONS (max 1):
-- Should be a meaningful goal for next month
+- Should be a meaningful goal for YOUR next month
+- MUST connect to something specific from your entries
 - Maximum 15 words
 - MUST connect to patterns you noticed in their data
 - BAD: "Set clearer goals" (generic advice)
