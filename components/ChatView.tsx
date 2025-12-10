@@ -56,13 +56,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [lastSavedTakeawayId, setLastSavedTakeawayId] = useState<string | null>(null);
   const [takeawayToast, setTakeawayToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Calculate if takeaway button should show (3+ exchanges AND 30+ user words)
+  // Calculate if takeaway button should show (3+ exchanges AND 20+ user words)
   const showTakeawayButton = useMemo(() => {
     const userMessages = messages.filter(m => m.sender === 'user');
     const userWordCount = userMessages.reduce(
       (sum, m) => sum + (m.text?.split(/\s+/).length || 0), 0
     );
-    return messages.length >= 6 && userWordCount >= 30;
+    return messages.length >= 6 && userWordCount >= 20;
   }, [messages]);
 
   // Auto-dismiss takeaway toast after 3 seconds
@@ -238,14 +238,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
         `${m.sender === 'user' ? 'User' : 'AI'}: ${m.text}`
       ).join('\n');
 
+      console.log('[Takeaway] Calling AI with messages:', formattedMessages.substring(0, 200));
+
       // Call AI to generate summary
       const startTime = Date.now();
       const response = await callAIProxy<{ title: string; summary: string }>('chat-summary', { messages: formattedMessages });
       const latency = Date.now() - startTime;
 
+      console.log('[Takeaway] AI Response:', response);
+
       if (!response?.title || !response?.summary) {
+        console.error('[Takeaway] Invalid AI response - missing title or summary:', response);
         throw new Error('Invalid AI response');
       }
+
+      console.log('[Takeaway] Saving to DB with title:', response.title);
 
       // Save to database
       const savedEntry = await saveChatTakeaway(
@@ -256,7 +263,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
         userWordCount
       );
 
+      console.log('[Takeaway] DB save result:', savedEntry);
+
       if (!savedEntry) {
+        console.error('[Takeaway] DB save returned null');
         throw new Error('Failed to save entry');
       }
 
@@ -278,7 +288,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setToast?.({ message: 'Takeaway saved ✓' });
 
     } catch (error) {
-      console.error('Error saving takeaway:', error);
+      console.error('[Takeaway] Error:', error);
       logEvent(userId, 'takeaway_generation_failed', { error: String(error) });
       setTakeawayToast({ message: 'Failed to save. Try again.', type: 'error' });
       setToast?.({ message: 'Failed to save takeaway. Try again.' });
@@ -402,8 +412,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Takeaway Toast */}
       {takeawayToast && (
         <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg animate-fade-in-up ${takeawayToast.type === 'success'
-            ? 'bg-green-600 text-white'
-            : 'bg-red-600 text-white'
+          ? 'bg-green-600 text-white'
+          : 'bg-red-600 text-white'
           }`}>
           {takeawayToast.message}
         </div>
