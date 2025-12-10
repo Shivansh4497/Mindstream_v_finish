@@ -33,7 +33,7 @@ console.log('[AI Proxy] GEMINI_API_KEY present:', !!geminiKey);
 console.log('[AI Proxy] Provider chain: Groq 70B -> Groq 8B -> Gemini Flash -> Gemini Lite -> Cached');
 
 interface AIRequest {
-    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection' | 'list-models';
+    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection' | 'chat-summary' | 'list-models';
     payload: Record<string, any>;
 }
 
@@ -551,6 +551,55 @@ Return exactly this format:
 
                     const response = await callAI(prompt, action);
                     result = normalizeReflection(parseJSON(response));
+                    break;
+                }
+
+                case 'chat-summary': {
+                    const { messages } = payload;
+                    const prompt = `You are an assistant that converts a private chat into a short, precise "takeaway" entry.
+
+RULES (STRICT):
+- Output JSON: {"title":"<3-7 words>","summary":"• Bullet 1\\n• Bullet 2\\n• Bullet 3"}
+- Use 2–4 bullets maximum (MUST start with •)
+- Use second-person: "You realized...", "Key insight:..."
+- Focus on INSIGHTS and REALIZATIONS, not chat mechanics
+- Include actionable next steps when relevant
+- Total summary text must be <= 50 words
+- Keep tone neutral and practical
+
+CONVERSATION:
+${messages}`;
+
+                    let response = await callAI(prompt, action);
+                    let parsed = parseJSON(response);
+
+                    // Validation: must have title, summary, and bullet points
+                    const isValid = parsed?.title &&
+                        parsed?.summary &&
+                        typeof parsed.summary === 'string' &&
+                        parsed.summary.includes('•');
+
+                    // Retry once if invalid
+                    if (!isValid) {
+                        console.log('[AI Proxy] chat-summary: Invalid response, retrying...');
+                        response = await callAI(prompt, action);
+                        parsed = parseJSON(response);
+                    }
+
+                    // Final validation
+                    if (!parsed?.title || !parsed?.summary) {
+                        result = {
+                            success: false,
+                            error: 'Failed to generate valid summary',
+                            prompt_version: 'chat-summary-v1'
+                        };
+                    } else {
+                        result = {
+                            title: parsed.title,
+                            summary: parsed.summary,
+                            prompt_version: 'chat-summary-v1'
+                        };
+                    }
                     break;
                 }
 

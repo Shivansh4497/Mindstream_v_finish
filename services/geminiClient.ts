@@ -13,7 +13,8 @@ export type AIProxyAction =
     | 'chat'
     | 'daily-reflection'
     | 'weekly-reflection'
-    | 'monthly-reflection';
+    | 'monthly-reflection'
+    | 'chat-summary';
 
 interface AIProxyResponse<T> {
     success: boolean;

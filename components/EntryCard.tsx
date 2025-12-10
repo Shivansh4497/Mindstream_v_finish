@@ -49,6 +49,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
   const isProcessing = entry.emoji === "⏳";
   const isUnprocessed = entry.tags?.includes("Unprocessed");
   const hasSuggestions = entry.suggestions && entry.suggestions.length > 0;
+  const isChatTakeaway = entry.source === 'chat_takeaway';
 
   const entryTime = new Date(entry.timestamp).toLocaleTimeString([], {
     hour: '2-digit',
@@ -69,7 +70,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
   }, []);
 
   return (
-    <div className={`bg-dark-surface rounded-lg p-5 mb-4 shadow-lg animate-fade-in-up transition-transform hover:scale-[1.02] ${isProcessing ? 'opacity-70' : ''}`}>
+    <div className={`bg-dark-surface rounded-lg p-5 mb-4 shadow-lg animate-fade-in-up transition-transform hover:scale-[1.02] ${isProcessing ? 'opacity-70' : ''} ${isChatTakeaway ? 'border-l-4 border-purple-400' : ''}`}>
 
       <div className="flex justify-between items-start mb-3 gap-4">
         <div className="flex-grow">
@@ -77,6 +78,11 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onTagClick, onEdit,
             {entry.emoji && <span>{entry.emoji}</span>}
             <span>{entry.title}</span>
             {isProcessing && <div className="w-4 h-4 border-2 border-brand-teal border-t-transparent rounded-full animate-spin ml-2"></div>}
+            {isChatTakeaway && (
+              <span className="text-xs font-normal text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full ml-2">
+                💬 From Chat
+              </span>
+            )}
           </h3>
           {isUnprocessed && (
             <div className="text-xs text-gray-400 mt-1 italic">

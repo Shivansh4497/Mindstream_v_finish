@@ -1,10 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Share2, Check } from 'lucide-react';
-import { Message, AISuggestion } from '../types';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { Volume2, VolumeX, Share2, Check, FileText, Loader2 } from 'lucide-react';
+import { Message, AISuggestion, Entry } from '../types';
 import { MessageBubble } from './MessageBubble';
 import { speak, stopSpeaking, initializeTTS } from '../utils/tts';
 import { ChatSharingModal } from './ChatSharingModal';
-import { createChatFeedback, updateChatFeedback, logEvent, EntryPoint, ChatMessage } from '../services/dbService';
+import { createChatFeedback, updateChatFeedback, logEvent, EntryPoint, ChatMessage, saveChatTakeaway } from '../services/dbService';
+import { callAIProxy } from '../services/geminiClient';
 
 interface ChatViewProps {
   messages: Message[];
@@ -13,6 +14,8 @@ interface ChatViewProps {
   userId?: string;
   currentPersonality?: string;
   entryPoint?: EntryPoint;
+  onTakeawaySaved?: (entry: Entry) => void;
+  setToast?: (toast: { message: string; action?: { label: string; onClick: () => void } } | null) => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -21,7 +24,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onAddSuggestion,
   userId,
   currentPersonality = 'stoic',
-  entryPoint = 'organic'
+  entryPoint = 'organic',
+  onTakeawaySaved,
+  setToast
 }) => {
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const [ttsEnabled, setTtsEnabled] = useState(() => {
@@ -45,6 +50,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const feedbackSessionId = useRef<string | null>(null);
   const wasLoadingRef = useRef(false);
   const lastSavedMessageCount = useRef(0);
+
+  // Chat Takeaways state
+  const [isSavingTakeaway, setIsSavingTakeaway] = useState(false);
+  const [lastSavedTakeawayId, setLastSavedTakeawayId] = useState<string | null>(null);
+
+  // Calculate if takeaway button should show (3+ exchanges AND 30+ user words)
+  const showTakeawayButton = useMemo(() => {
+    const userMessages = messages.filter(m => m.sender === 'user');
+    const userWordCount = userMessages.reduce(
+      (sum, m) => sum + (m.text?.split(/\s+/).length || 0), 0
+    );
+    return messages.length >= 6 && userWordCount >= 30;
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -190,6 +208,92 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [userId]);
 
+  // Chat Takeaways: Save AI-generated summary
+  const handleSaveTakeaway = useCallback(async () => {
+    if (isSavingTakeaway || !userId) return;
+
+    setIsSavingTakeaway(true);
+
+    // Calculate metrics for logging
+    const userMessages = messages.filter(m => m.sender === 'user');
+    const userWordCount = userMessages.reduce(
+      (sum, m) => sum + (m.text?.split(/\s+/).length || 0), 0
+    );
+
+    // Log button clicked
+    logEvent(userId, 'takeaway_button_clicked', { message_count: messages.length });
+
+    try {
+      // Format messages for AI
+      const formattedMessages = messages.map(m =>
+        `${m.sender === 'user' ? 'User' : 'AI'}: ${m.text}`
+      ).join('\n');
+
+      // Call AI to generate summary
+      const startTime = Date.now();
+      const response = await callAIProxy('chat-summary', { messages: formattedMessages });
+      const latency = Date.now() - startTime;
+
+      if (!response?.title || !response?.summary) {
+        throw new Error('Invalid AI response');
+      }
+
+      // Save to database
+      const savedEntry = await saveChatTakeaway(
+        userId,
+        response.title,
+        response.summary,
+        messages.length,
+        userWordCount
+      );
+
+      if (!savedEntry) {
+        throw new Error('Failed to save entry');
+      }
+
+      setLastSavedTakeawayId(savedEntry.id);
+
+      // Log success
+      logEvent(userId, 'takeaway_saved', {
+        generation_id: savedEntry.source_meta?.generation_id,
+        latency_ms: latency
+      });
+
+      // Notify parent if provided
+      onTakeawaySaved?.(savedEntry);
+
+      // Show toast with undo
+      setToast?.({
+        message: 'Takeaway saved ✓',
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const { deleteEntry } = await import('../services/dbService');
+              const success = await deleteEntry(savedEntry.id);
+              if (success) {
+                logEvent(userId, 'takeaway_undone', { generation_id: savedEntry.source_meta?.generation_id });
+                setToast?.({ message: 'Takeaway removed' });
+              } else {
+                throw new Error('Delete failed');
+              }
+            } catch {
+              logEvent(userId, 'takeaway_undo_failed');
+              setToast?.({ message: "Couldn't undo, please try again" });
+            }
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error saving takeaway:', error);
+      logEvent(userId, 'takeaway_generation_failed', { error: String(error) });
+      setToast?.({ message: 'Failed to save takeaway. Try again.' });
+    } finally {
+      setIsSavingTakeaway(false);
+    }
+  }, [isSavingTakeaway, userId, messages, onTakeawaySaved, setToast]);
+
   return (
     <>
       <div className="h-full flex flex-col overflow-hidden">
@@ -239,6 +343,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </>
               )}
             </button>
+
+            {/* Save Takeaway Button */}
+            {showTakeawayButton && (
+              <button
+                onClick={handleSaveTakeaway}
+                disabled={isSavingTakeaway}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Save key insights from this chat"
+              >
+                {isSavingTakeaway ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    <span>Save Takeaway</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
           {/* Ephemerality indicator */}
           <div className="text-xs text-gray-500 text-center pb-2">

@@ -200,6 +200,56 @@ export const deleteEntry = async (entryId: string): Promise<boolean> => {
     return true;
 };
 
+// Chat Takeaways: Save AI-generated summary from chat as an entry
+export const saveChatTakeaway = async (
+    userId: string,
+    title: string,
+    summary: string,
+    messageCount: number,
+    userWordCount: number
+): Promise<Entry | null> => {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
+    const generationId = crypto.randomUUID();
+    const sourceMeta = {
+        prompt_version: 'chat-summary-v1',
+        generation_id: generationId,
+        message_count: messageCount,
+        user_word_count: userWordCount,
+        generated_at: new Date().toISOString(),
+        quality_score: null // Founder fills later
+    };
+
+    const entryData = {
+        user_id: userId,
+        text: summary,
+        title: title,
+        timestamp: new Date().toISOString(),
+        tags: ['chat-insight'],
+        primary_sentiment: 'Reflective' as const,
+        emoji: '💬',
+        source: 'chat_takeaway' as const,
+        source_meta: sourceMeta
+    };
+
+    const client: any = supabase;
+    const { data, error } = await client
+        .from('entries')
+        .insert(entryData)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error saving chat takeaway:', error);
+        return null;
+    }
+
+    // Log analytics event
+    logEvent(userId, 'takeaway_saved', { generation_id: generationId });
+
+    return data;
+};
+
 // RAG: Keyword Search with Full Text Search (FTS)
 export const searchEntries = async (userId: string, keywords: string[]): Promise<Entry[]> => {
     if (!supabase) return [];

@@ -28,6 +28,8 @@ export interface Entry {
   primary_sentiment?: GranularSentiment | null;
   secondary_sentiment?: GranularSentiment | null;
   suggestions?: EntrySuggestion[] | null;
+  source?: 'manual' | 'voice' | 'chat_takeaway';
+  source_meta?: Record<string, unknown>;
 }
 
 export interface AISuggestion {
