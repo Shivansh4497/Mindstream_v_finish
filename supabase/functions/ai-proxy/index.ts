@@ -573,18 +573,23 @@ Return exactly this format:
 
                 case 'chat-summary': {
                     const { messages } = payload;
-                    const prompt = `Summarize this conversation into key takeaways.
+                    const prompt = `Extract the USER's specific realizations from this conversation.
 
 CONVERSATION:
 ${messages}
 
-Respond with valid JSON only. Use | to separate bullet points (NOT newlines):
-{"title": "short title", "summary": "• point one | • point two | • point three"}
+CRITICAL: Capture what the USER specifically discovered or decided - NOT generic advice.
+Look for: specific blockers they named, decisions they made, "aha" moments, concrete next steps.
+
+Respond with valid JSON. Use | to separate bullets (NOT newlines):
+{"title": "their specific topic", "summary": "• What you realized about X | • Your decision to Y | • Next step: Z"}
+
+DO NOT output generic advice like "break tasks down" or "focus on one thing".
+DO quote or paraphrase the user's actual words and specific situation.
 
 Rules:
-- title: 3-7 words
-- summary: 2-4 bullets separated by |
-- Focus on insights, use "you/your"
+- title: Name THEIR specific challenge (e.g. "MVP Launch Anxiety" not "Productivity Tips")
+- summary: 2-3 bullets with THEIR specific insights
 - Under 50 words total`;
 
                     console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
