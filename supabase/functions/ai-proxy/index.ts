@@ -578,15 +578,14 @@ Return exactly this format:
 CONVERSATION:
 ${messages}
 
-Respond ONLY with valid JSON in this EXACT format:
-{"title": "short title here", "summary": "• first point\\n• second point\\n• third point"}
+Respond with valid JSON only. Use | to separate bullet points (NOT newlines):
+{"title": "short title", "summary": "• point one | • point two | • point three"}
 
-Requirements:
-- title: 3-7 words describing the main topic
-- summary: 2-4 bullet points starting with •
-- Focus on insights and realizations
-- Use second person (you, your)
-- Keep total under 50 words`;
+Rules:
+- title: 3-7 words
+- summary: 2-4 bullets separated by |
+- Focus on insights, use "you/your"
+- Under 50 words total`;
 
                     console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
                     let response = await callAI(prompt, action);
@@ -594,11 +593,28 @@ Requirements:
 
                     let parsed: any = null;
                     try {
-                        parsed = parseJSON(response);
-                    } catch (e) {
-                        console.error('[AI Proxy] chat-summary: JSON parse failed:', e);
+                        // First try direct parse
+                        parsed = JSON.parse(response.trim());
+                    } catch (e1) {
+                        console.log('[AI Proxy] chat-summary: Direct parse failed, trying cleanup...');
+                        try {
+                            // Try extracting JSON from markdown
+                            let clean = response.trim();
+                            const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                            if (match && match[1]) clean = match[1];
+                            // Remove any actual newlines inside the JSON string
+                            clean = clean.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+                            parsed = JSON.parse(clean);
+                        } catch (e2) {
+                            console.error('[AI Proxy] chat-summary: JSON parse failed:', e2);
+                        }
                     }
                     console.log('[AI Proxy] chat-summary: Parsed result:', JSON.stringify(parsed));
+
+                    // Convert pipe separators to newlines in summary
+                    if (parsed?.summary) {
+                        parsed.summary = parsed.summary.replace(/\s*\|\s*/g, '\n');
+                    }
 
                     // Validation: must have title, summary, and bullet points
                     const isValid = parsed?.title &&
@@ -612,7 +628,14 @@ Requirements:
                         response = await callAI(prompt, action);
                         console.log('[AI Proxy] chat-summary: Retry raw response:', response?.substring(0, 500));
                         try {
-                            parsed = parseJSON(response);
+                            let clean = response.trim();
+                            const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                            if (match && match[1]) clean = match[1];
+                            clean = clean.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+                            parsed = JSON.parse(clean);
+                            if (parsed?.summary) {
+                                parsed.summary = parsed.summary.replace(/\s*\|\s*/g, '\n');
+                            }
                         } catch (e) {
                             console.error('[AI Proxy] chat-summary: Retry JSON parse failed:', e);
                             parsed = null;
@@ -626,7 +649,7 @@ Requirements:
                         return new Response(JSON.stringify({
                             success: false,
                             error: 'Failed to generate valid summary',
-                            prompt_version: 'chat-summary-v1'
+                            prompt_version: 'chat-summary-v2'
                         }), {
                             status: 200,
                             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -636,7 +659,7 @@ Requirements:
                     result = {
                         title: parsed.title,
                         summary: parsed.summary,
-                        prompt_version: 'chat-summary-v1'
+                        prompt_version: 'chat-summary-v2'
                     };
                     break;
                 }
