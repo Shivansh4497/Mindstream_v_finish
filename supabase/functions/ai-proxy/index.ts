@@ -570,8 +570,11 @@ RULES (STRICT):
 CONVERSATION:
 ${messages}`;
 
+                    console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
                     let response = await callAI(prompt, action);
+                    console.log('[AI Proxy] chat-summary: Raw AI response:', response?.substring(0, 500));
                     let parsed = parseJSON(response);
+                    console.log('[AI Proxy] chat-summary: Parsed result:', JSON.stringify(parsed));
 
                     // Validation: must have title, summary, and bullet points
                     const isValid = parsed?.title &&
@@ -583,23 +586,29 @@ ${messages}`;
                     if (!isValid) {
                         console.log('[AI Proxy] chat-summary: Invalid response, retrying...');
                         response = await callAI(prompt, action);
+                        console.log('[AI Proxy] chat-summary: Retry raw response:', response?.substring(0, 500));
                         parsed = parseJSON(response);
+                        console.log('[AI Proxy] chat-summary: Retry parsed:', JSON.stringify(parsed));
                     }
 
-                    // Final validation
+                    // Final validation - return error if still invalid
                     if (!parsed?.title || !parsed?.summary) {
-                        result = {
+                        console.error('[AI Proxy] chat-summary: Final validation failed, parsed:', parsed);
+                        return new Response(JSON.stringify({
                             success: false,
                             error: 'Failed to generate valid summary',
                             prompt_version: 'chat-summary-v1'
-                        };
-                    } else {
-                        result = {
-                            title: parsed.title,
-                            summary: parsed.summary,
-                            prompt_version: 'chat-summary-v1'
-                        };
+                        }), {
+                            status: 200,
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
                     }
+
+                    result = {
+                        title: parsed.title,
+                        summary: parsed.summary,
+                        prompt_version: 'chat-summary-v1'
+                    };
                     break;
                 }
 
