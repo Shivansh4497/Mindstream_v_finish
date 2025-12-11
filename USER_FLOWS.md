@@ -1,7 +1,7 @@
 # Mindstream User Flows - Complete Analysis
 
 > **Document Type:** Comprehensive User Flow Analysis  
-> **Last Updated:** December 9, 2025 (v6.7 - Opt-In Chat Feedback, Stricter Brevity, No-Asterisks)  
+> **Last Updated:** December 12, 2025 (v6.8 - Chat Takeaways Feature)  
 > **Coverage:** All user interactions, redirections, and navigation paths
 
 ---
@@ -557,6 +557,46 @@ The following data is injected into every chat response:
 - Explicit entry count shown to AI
 - Brand new users (≤2 entries) get warning not to claim patterns
 - Unambiguous date formatting (December 9, 2025)
+
+### 7.9 Chat Takeaways (NEW v6.8)
+**Component:** [ChatView.tsx](file:///Users/director/Mindstream_v1/components/ChatView.tsx)
+
+**Purpose:** Save valuable insights from chat conversations as persistent Stream entries.
+
+**Visibility Threshold:**
+- Button appears when: `messages.length >= 6 AND userWordCount >= 20`
+- Prevents saving trivial conversations
+
+**Flow:**
+```
+User has meaningful conversation (6+ messages)
+    ↓
+"Save Takeaway" button appears (top-right, next to Voice toggle)
+    ↓
+User clicks button
+    ↓
+Button shows loading state (Saving...)
+    ↓
+AI generates summary via chat-summary action:
+    - Extracts USER's specific realizations
+    - Generates contextual title (e.g., "MVP Launch Anxiety")
+    - Creates 2-3 bullet points with user's actual insights
+    ↓
+Entry saved with source: 'chat_takeaway'
+    ↓
+Toast: "Takeaway saved to Stream!" with Undo + Edit links
+```
+
+**Entry Card Styling:**
+| Attribute | Value |
+|-----------|-------|
+| Left border | `border-l-4 border-purple-400` |
+| Badge | "💬 From Chat" (teal background) |
+| Tag | `chat-insight` |
+
+**Database Schema:**
+- `source`: 'chat_takeaway'
+- `source_meta`: JSONB with `prompt_version`, `generation_id`, `message_count`, `user_word_count`
 
 ---
 

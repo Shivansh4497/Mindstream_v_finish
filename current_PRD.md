@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.7  
-**Last Updated:** December 9, 2025 (Opt-In Chat Feedback, Stricter Brevity, No-Asterisks Rule)  
+**Version:** 6.8  
+**Last Updated:** December 12, 2025 (Chat Takeaways Feature)  
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -368,6 +368,15 @@ Suggestions must:
 - *"Why do I procrastinate?"*
 - *"What patterns do you see in my anxiety?"*
 - *"Help me create a morning routine"*
+
+**Chat Takeaways (NEW v6.8):**
+- **Save Takeaway Button:** Appears after conversation reaches meaningful length (6+ messages, 20+ user words)
+- **AI Summary Generation:** Extracts user's specific realizations, not generic advice
+  - 3-7 word contextual title (e.g., "MVP Launch Anxiety")
+  - 2-3 bullet points with user's actual insights and decisions
+- **Stream Integration:** Saved as entry with `source: 'chat_takeaway'`
+- **Visual Distinction:** Purple left border + "💬 From Chat" badge in Stream
+- **Undo Support:** Toast confirmation with undo option
 
 ---
 

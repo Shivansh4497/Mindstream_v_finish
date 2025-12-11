@@ -1,7 +1,7 @@
 # Mindstream AI Prompts Documentation
 
-**Version:** 6.7  
-**Last Updated:** December 9, 2025 (Opt-In Chat Feedback, Stricter Brevity, No-Asterisks Rule)  
+**Version:** 6.8  
+**Last Updated:** December 12, 2025 (Chat Takeaways Feature)  
 **Status:** Production (MVP)
 
 This document contains every AI prompt used in Mindstream, including:
@@ -560,6 +560,56 @@ CRITICAL: Do NOT suggest something they already track as a habit! Check "Habits 
 
 Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}
 ```
+
+---
+
+## 9. Chat Takeaway Summary Prompt (NEW v6.8)
+
+### Location
+`supabase/functions/ai-proxy/index.ts` → Case: `chat-summary`
+
+### Trigger
+User clicks "Save Takeaway" button in Chat view after meaningful conversation.
+
+### Prompt (v6.8 - Personalized Extraction)
+
+```
+Extract the USER's specific realizations from this conversation.
+
+CONVERSATION:
+{messages}
+
+CRITICAL: Capture what the USER specifically discovered or decided - NOT generic advice.
+Look for: specific blockers they named, decisions they made, "aha" moments, concrete next steps.
+
+Respond with valid JSON. Use | to separate bullets (NOT newlines):
+{"title": "their specific topic", "summary": "• What you realized about X | • Your decision to Y | • Next step: Z"}
+
+DO NOT output generic advice like "break tasks down" or "focus on one thing".
+DO quote or paraphrase the user's actual words and specific situation.
+
+Rules:
+- title: Name THEIR specific challenge (e.g. "MVP Launch Anxiety" not "Productivity Tips")
+- summary: 2-3 bullets with THEIR specific insights
+- Under 50 words total
+```
+
+### Expected Response
+
+```json
+{
+  "title": "MVP Launch Anxiety",
+  "summary": "• You realized the pressure is from self-imposed deadlines\n• Decision to start with the notes feature first\n• Next step: 30-minute planning session tomorrow"
+}
+```
+
+### Technical Notes
+- Uses `|` separator in AI response to avoid JSON newline parsing issues
+- Server converts `|` to `\n` after successful JSON parse
+- Collapses all actual newlines to spaces before parsing
+- Retry once if initial response fails validation
+
+---
 
 ### 8.2 Weekly Reflection
 
