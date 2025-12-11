@@ -154,6 +154,11 @@ const CACHED_FALLBACKS: CachedResponses = {
     'monthly-reflection': {
         summary: "Another month has passed in your journey. The experiences, both highs and lows, have shaped who you are becoming. Trust the process and keep moving forward.",
         suggestions: []
+    },
+    'chat-summary': {
+        title: "Conversation Insights",
+        summary: "• Unable to generate summary at this time\n• Please try again in a moment",
+        prompt_version: 'chat-summary-v1'
     }
 };
 
@@ -573,7 +578,13 @@ ${messages}`;
                     console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
                     let response = await callAI(prompt, action);
                     console.log('[AI Proxy] chat-summary: Raw AI response:', response?.substring(0, 500));
-                    let parsed = parseJSON(response);
+
+                    let parsed: any = null;
+                    try {
+                        parsed = parseJSON(response);
+                    } catch (e) {
+                        console.error('[AI Proxy] chat-summary: JSON parse failed:', e);
+                    }
                     console.log('[AI Proxy] chat-summary: Parsed result:', JSON.stringify(parsed));
 
                     // Validation: must have title, summary, and bullet points
@@ -587,7 +598,12 @@ ${messages}`;
                         console.log('[AI Proxy] chat-summary: Invalid response, retrying...');
                         response = await callAI(prompt, action);
                         console.log('[AI Proxy] chat-summary: Retry raw response:', response?.substring(0, 500));
-                        parsed = parseJSON(response);
+                        try {
+                            parsed = parseJSON(response);
+                        } catch (e) {
+                            console.error('[AI Proxy] chat-summary: Retry JSON parse failed:', e);
+                            parsed = null;
+                        }
                         console.log('[AI Proxy] chat-summary: Retry parsed:', JSON.stringify(parsed));
                     }
 
