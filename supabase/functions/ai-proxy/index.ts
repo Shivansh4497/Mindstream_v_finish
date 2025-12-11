@@ -561,19 +561,20 @@ Return exactly this format:
 
                 case 'chat-summary': {
                     const { messages } = payload;
-                    const prompt = `You are an assistant that converts a private chat into a short, precise "takeaway" entry.
-
-RULES (STRICT):
-- Output JSON: {"title":"<3-7 words>","summary":"• Bullet 1\\n• Bullet 2\\n• Bullet 3"}
-- Use 2–4 bullets maximum (MUST start with •)
-- Use second-person: "You realized...", "Key insight:..."
-- Focus on INSIGHTS and REALIZATIONS, not chat mechanics
-- Include actionable next steps when relevant
-- Total summary text must be <= 50 words
-- Keep tone neutral and practical
+                    const prompt = `Summarize this conversation into key takeaways.
 
 CONVERSATION:
-${messages}`;
+${messages}
+
+Respond ONLY with valid JSON in this EXACT format:
+{"title": "short title here", "summary": "• first point\\n• second point\\n• third point"}
+
+Requirements:
+- title: 3-7 words describing the main topic
+- summary: 2-4 bullet points starting with •
+- Focus on insights and realizations
+- Use second person (you, your)
+- Keep total under 50 words`;
 
                     console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
                     let response = await callAI(prompt, action);
