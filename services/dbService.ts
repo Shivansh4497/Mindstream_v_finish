@@ -250,6 +250,53 @@ export const saveChatTakeaway = async (
     return data;
 };
 
+// Chat Takeaways: Update existing takeaway entry (prevents duplicates from same session)
+export const updateChatTakeaway = async (
+    entryId: string,
+    userId: string,
+    title: string,
+    summary: string,
+    messageCount: number,
+    userWordCount: number
+): Promise<Entry | null> => {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
+    const generationId = crypto.randomUUID();
+    const sourceMeta = {
+        prompt_version: 'chat-summary-v2',
+        generation_id: generationId,
+        message_count: messageCount,
+        user_word_count: userWordCount,
+        generated_at: new Date().toISOString(),
+        quality_score: null,
+        updated: true // Flag to indicate this was an update
+    };
+
+    const client: any = supabase;
+    const { data, error } = await client
+        .from('entries')
+        .update({
+            text: summary,
+            title: title,
+            timestamp: new Date().toISOString(), // Update timestamp to now
+            source_meta: sourceMeta
+        })
+        .eq('id', entryId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating chat takeaway:', error);
+        return null;
+    }
+
+    // Log analytics event
+    logEvent(userId, 'takeaway_updated', { generation_id: generationId, entry_id: entryId });
+
+    return data;
+};
+
 // RAG: Keyword Search with Full Text Search (FTS)
 export const searchEntries = async (userId: string, keywords: string[]): Promise<Entry[]> => {
     if (!supabase) return [];
@@ -1170,6 +1217,7 @@ export type AnalyticsEvent =
     | 'takeaway_button_shown'
     | 'takeaway_button_clicked'
     | 'takeaway_saved'
+    | 'takeaway_updated'
     | 'takeaway_edited'
     | 'takeaway_undone'
     | 'takeaway_generation_failed'

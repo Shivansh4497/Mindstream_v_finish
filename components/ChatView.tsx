@@ -4,7 +4,7 @@ import { Message, AISuggestion, Entry } from '../types';
 import { MessageBubble } from './MessageBubble';
 import { speak, stopSpeaking, initializeTTS } from '../utils/tts';
 import { ChatSharingModal } from './ChatSharingModal';
-import { createChatFeedback, updateChatFeedback, logEvent, EntryPoint, ChatMessage, saveChatTakeaway } from '../services/dbService';
+import { createChatFeedback, updateChatFeedback, logEvent, EntryPoint, ChatMessage, saveChatTakeaway, updateChatTakeaway } from '../services/dbService';
 import { callAIProxy } from '../services/geminiClient';
 
 interface ChatViewProps {
@@ -254,14 +254,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       console.log('[Takeaway] Saving to DB with title:', response.title);
 
-      // Save to database
-      const savedEntry = await saveChatTakeaway(
-        userId,
-        response.title,
-        response.summary,
-        messages.length,
-        userWordCount
-      );
+      // Save or update in database (update if already saved in this session)
+      let savedEntry: Entry | null;
+
+      if (lastSavedTakeawayId) {
+        // Update existing entry (prevents duplicates from same chat session)
+        console.log('[Takeaway] Updating existing entry:', lastSavedTakeawayId);
+        savedEntry = await updateChatTakeaway(
+          lastSavedTakeawayId,
+          userId,
+          response.title,
+          response.summary,
+          messages.length,
+          userWordCount
+        );
+      } else {
+        // Create new entry
+        savedEntry = await saveChatTakeaway(
+          userId,
+          response.title,
+          response.summary,
+          messages.length,
+          userWordCount
+        );
+      }
 
       console.log('[Takeaway] DB save result:', savedEntry);
 
@@ -273,7 +289,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setLastSavedTakeawayId(savedEntry.id);
 
       // Log success
-      logEvent(userId, 'takeaway_saved', {
+      logEvent(userId, lastSavedTakeawayId ? 'takeaway_updated' : 'takeaway_saved', {
         generation_id: savedEntry.source_meta?.generation_id,
         latency_ms: latency
       });
@@ -281,11 +297,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
       // Notify parent if provided
       onTakeawaySaved?.(savedEntry);
 
-      // Show success toast (internal)
-      setTakeawayToast({ message: 'Takeaway saved to Stream! ✓', type: 'success' });
+      // Show success toast (internal) - different message for update
+      setTakeawayToast({
+        message: lastSavedTakeawayId ? 'Takeaway updated! ✓' : 'Takeaway saved to Stream! ✓',
+        type: 'success'
+      });
 
       // Also call external if provided
-      setToast?.({ message: 'Takeaway saved ✓' });
+      setToast?.({ message: lastSavedTakeawayId ? 'Takeaway updated ✓' : 'Takeaway saved ✓' });
 
     } catch (error) {
       console.error('[Takeaway] Error:', error);
@@ -295,7 +314,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     } finally {
       setIsSavingTakeaway(false);
     }
-  }, [isSavingTakeaway, userId, messages, onTakeawaySaved, setToast]);
+  }, [isSavingTakeaway, userId, messages, lastSavedTakeawayId, onTakeawaySaved, setToast]);
 
   return (
     <>
