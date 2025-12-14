@@ -205,18 +205,6 @@ function parseJSON<T>(text: string): T {
     let clean = text.trim();
     const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (match && match[1]) clean = match[1];
-
-    // Sanitize control characters inside JSON strings
-    // This fixes AI responses that use actual newlines instead of \n
-    clean = clean.replace(/[\x00-\x1F]/g, (char) => {
-        switch (char) {
-            case '\n': return '\\n';
-            case '\r': return '\\r';
-            case '\t': return '\\t';
-            default: return '';
-        }
-    });
-
     return JSON.parse(clean);
 }
 
