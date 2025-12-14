@@ -404,13 +404,27 @@ Return: {"emoji": "🏃", "category": "Health"}`;
 
                 case 'analyze-intention': {
                     const { intentionText } = payload;
-                    const prompt = `Classify this intention/goal and assign an emoji. Respond with ONLY JSON:
-Intention: "${intentionText}"
-Categories: Health, Growth, Career, Finance, Connection, System
-Return: {"emoji": "🎯", "category": "Growth"}`;
+                    const prompt = `Classify this goal into ONE category and pick the matching emoji.
 
+Goal: "${intentionText}"
+
+CATEGORIES AND EMOJIS:
+- Health (exercise, sleep, diet, mental health) → 🏃
+- Growth (learning, reading, skills, habits) → 📚
+- Career (work, projects, job, promotion) → 💼
+- Finance (money, savings, budget, investing) → 💰
+- Connection (relationships, family, social) → 💜
+- System (organization, productivity, routines) → 🛠️
+
+Pick the BEST match based on the goal's content.
+Respond with ONLY this JSON format:
+{"emoji": "<emoji from list>", "category": "<category name>"}`;
+
+                    console.log('[AI Proxy] analyze-intention: Goal:', intentionText.substring(0, 50));
                     const response = await callAI(prompt, action);
+                    console.log('[AI Proxy] analyze-intention: Response:', response);
                     result = parseJSON(response);
+                    console.log('[AI Proxy] analyze-intention: Parsed:', result);
                     break;
                 }
 
