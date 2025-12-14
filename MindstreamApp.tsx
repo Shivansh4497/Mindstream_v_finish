@@ -28,7 +28,6 @@ import { HabitsView } from './components/HabitsView';
 import { HabitsInputBar } from './components/HabitsInputBar';
 import { SettingsView } from './components/SettingsView';
 import { LifeAreaDashboard } from './components/LifeAreaDashboard';
-import { FocusView } from './components/FocusView';
 import { InsightsView } from './components/InsightsView';
 import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
@@ -334,36 +333,55 @@ export const MindstreamApp: React.FC = () => {
                             </motion.div>
                         )}
 
-                        {view === 'focus' && (
+
+                        {view === 'habits' && (
                             <motion.div
-                                key="focus"
+                                key="habits"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.5, ease: 'easeInOut' }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
                                 className="absolute inset-0 flex flex-col"
                             >
-                                <FocusView
-                                    // Habits Props
+                                <HabitsView
                                     habits={state.habits}
                                     todaysLogs={state.habitLogs}
-                                    onToggleHabit={actions.handleToggleHabit}
-                                    onEditHabit={setHabitToEdit}
-                                    onDeleteHabit={actions.handleDeleteHabit}
+                                    onToggle={actions.handleToggleHabit}
+                                    onEdit={setHabitToEdit}
+                                    onDelete={actions.handleDeleteHabit}
+                                    onAddHabit={(name, _emoji) => actions.handleAddHabit(name, activeHabitFrequency)}
+                                    activeFrequency={activeHabitFrequency}
+                                    onFrequencyChange={setActiveHabitFrequency}
+                                />
+                                <HabitsInputBar
                                     onAddHabit={actions.handleAddHabit}
-                                    isAddingHabit={state.isAddingHabit}
-                                    activeHabitFrequency={activeHabitFrequency}
-                                    onHabitFrequencyChange={setActiveHabitFrequency}
-                                    // Intentions Props
-                                    intentions={state.intentions}
-                                    onToggleIntention={actions.handleToggleIntention}
-                                    onDeleteIntention={actions.handleDeleteIntention}
-                                    onAddIntention={actions.handleAddIntention}
-                                    onStarToggleIntention={actions.handleToggleStar}
-                                    onEditIntention={setIntentionToEdit}
+                                    isLoading={state.isAddingHabit}
+                                    activeFrequency={activeHabitFrequency}
                                 />
                             </motion.div>
                         )}
+
+                        {view === 'goals' && (
+                            <motion.div
+                                key="goals"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                className="absolute inset-0 flex flex-col"
+                            >
+                                <IntentionsView
+                                    intentions={state.intentions}
+                                    onToggle={actions.handleToggleIntention}
+                                    onDelete={actions.handleDeleteIntention}
+                                    onStarToggle={actions.handleToggleStar}
+                                    onEdit={setIntentionToEdit}
+                                    onAddIntention={(text) => actions.handleAddIntention(text, null, false)}
+                                />
+                                <IntentionsInputBar onAddIntention={actions.handleAddIntention} />
+                            </motion.div>
+                        )}
+
 
                         {view === 'insights' && (
                             <motion.div

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Sparkles } from 'lucide-react';
+import { Target, Sparkles, Repeat } from 'lucide-react';
 import { ChatIcon } from './icons/ChatIcon';
 
 // An icon for the "Stream" view is defined inline to avoid creating new files.
@@ -9,7 +9,7 @@ const StreamIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export type View = 'stream' | 'focus' | 'insights' | 'chat' | 'settings';
+export type View = 'stream' | 'habits' | 'goals' | 'insights' | 'chat' | 'settings';
 
 const INSIGHTS_UNLOCK_THRESHOLD = 5;
 
@@ -30,7 +30,8 @@ export const NavBar: React.FC<NavBarProps> = ({
 }) => {
   const navItems = [
     { id: 'stream', label: 'Stream', icon: StreamIcon },
-    { id: 'focus', label: 'Focus', icon: Target },
+    { id: 'habits', label: 'Habits', icon: Repeat },
+    { id: 'goals', label: 'Goals', icon: Target },
     { id: 'insights', label: 'Insights', icon: Sparkles },
     { id: 'chat', label: 'Chat', icon: ChatIcon },
   ];
@@ -39,6 +40,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   const visibleItems = navItems.filter(item =>
     item.id !== 'insights' || entryCount >= INSIGHTS_UNLOCK_THRESHOLD
   );
+
 
   return (
     <nav className="flex-shrink-0 bg-brand-indigo/80 backdrop-blur-sm p-2 border-t border-white/10 z-20 flex justify-around items-center">
