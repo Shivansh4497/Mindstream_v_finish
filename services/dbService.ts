@@ -569,7 +569,14 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
     return data || [];
 };
 
-export const addIntention = async (userId: string, text: string, dueDate: Date | null = null, isLifeGoal: boolean = false, isStarred: boolean = false): Promise<Intention | null> => {
+export const addIntention = async (
+    userId: string,
+    text: string,
+    dueDate: Date | null = null,
+    isLifeGoal: boolean = false,
+    isStarred: boolean = false,
+    onAIEnriched?: (intentionId: string, emoji: string, category: string) => void
+): Promise<Intention | null> => {
     if (!supabase) return null;
 
     // Format as local date string (YYYY-MM-DD) to avoid timezone offset issues
@@ -607,29 +614,36 @@ export const addIntention = async (userId: string, text: string, dueDate: Date |
 
     console.log('Intention created successfully:', data);
 
-    // Async AI tagging - don't block on this
-    analyzeIntentionAsync(data.id, text);
+    // Async AI tagging - don't block on this, but call back when done
+    analyzeIntentionAsync(data.id, text, onAIEnriched);
 
     return data;
 };
 
 // Async function to analyze and update intention with AI-assigned emoji/category
-const analyzeIntentionAsync = async (intentionId: string, intentionText: string) => {
+const analyzeIntentionAsync = async (
+    intentionId: string,
+    intentionText: string,
+    onAIEnriched?: (intentionId: string, emoji: string, category: string) => void
+) => {
     try {
         const { callAIProxy } = await import('./geminiClient');
         const result = await callAIProxy<{ emoji: string; category: string }>('analyze-intention', {
             intentionText
         });
 
+        const emoji = result?.emoji || '🎯';
+        const category = result?.category || 'Growth';
+
         if (result?.emoji || result?.category) {
             await (supabase as any)
                 .from('intentions')
-                .update({
-                    emoji: result.emoji || '🎯',
-                    category: result.category || 'Growth'
-                })
+                .update({ emoji, category })
                 .eq('id', intentionId);
-            console.log(`[AI Tagging] Intention updated: ${result.emoji} ${result.category}`);
+            console.log(`[AI Tagging] Intention updated: ${emoji} ${category}`);
+
+            // Call back to update UI state
+            onAIEnriched?.(intentionId, emoji, category);
         }
     } catch (e) {
         console.warn('[AI Tagging] Failed to analyze intention:', e);

@@ -431,13 +431,60 @@ export const useAppLogic = () => {
 
     const handleAddIntention = async (text: string, dueDate: Date | null, isLifeGoal: boolean) => {
         if (!user) return;
+
+        // Optimistic UI: Create temp intention and show immediately
+        const tempId = `temp-${Date.now()}`;
+        const tempIntention: Intention = {
+            id: tempId,
+            user_id: user.id,
+            text,
+            due_date: dueDate ? dueDate.toISOString().split('T')[0] : null,
+            is_life_goal: isLifeGoal,
+            is_starred: false,
+            status: 'pending' as const,
+            is_recurring: false,
+            emoji: '⏳', // Loading indicator
+            category: 'Growth',
+            created_at: new Date().toISOString()
+        };
+
+        // Show immediately
+        setIntentions(prev => [tempIntention, ...prev]);
+
         try {
-            const newIntention = await db.addIntention(user.id, text, dueDate, isLifeGoal);
-            if (isMounted.current && newIntention) {
-                setIntentions(prev => [newIntention, ...prev]);
+            // Callback to update UI state when AI enrichment completes
+            const onAIEnriched = (intentionId: string, emoji: string, category: string) => {
+                if (isMounted.current) {
+                    setIntentions(prev => prev.map(i =>
+                        i.id === intentionId ? { ...i, emoji, category } : i
+                    ));
+                }
+            };
+
+            const savedIntention = await db.addIntention(
+                user.id, text, dueDate, isLifeGoal, false, onAIEnriched
+            );
+
+            if (!isMounted.current) return;
+
+            if (savedIntention) {
+                // Replace temp with saved
+                setIntentions(prev => prev.map(i =>
+                    i.id === tempId ? savedIntention : i
+                ));
+                showToast('Goal saved ✓');
+            } else {
+                // Remove temp on failure
+                setIntentions(prev => prev.filter(i => i.id !== tempId));
+                showToast('Failed to save goal. Try again.');
             }
         } catch (error) {
             console.error('Error adding intention:', error);
+            if (isMounted.current) {
+                // Remove temp on error
+                setIntentions(prev => prev.filter(i => i.id !== tempId));
+                showToast('Failed to save goal. Try again.');
+            }
         }
     };
 
