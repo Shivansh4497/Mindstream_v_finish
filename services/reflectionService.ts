@@ -44,7 +44,10 @@ export const generateReflection = async (
 // --- WEEKLY REFLECTION ---
 export const generateWeeklyReflection = async (
     entries: Entry[],
-    intentions: Intention[]
+    intentions: Intention[],
+    habits?: Habit[],
+    habitLogs?: HabitLog[],
+    daysInPeriod: number = 7
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleDateString()}] ${e.primary_sentiment}: ${e.text}`
@@ -54,10 +57,17 @@ export const generateWeeklyReflection = async (
         `Goal: ${i.text} (${i.status})`
     ).join('\n');
 
+    // Show habit completion rates for the week
+    const habitsText = habits?.map(h => {
+        const completions = habitLogs?.filter(l => l.habit_id === h.id).length || 0;
+        return `Habit: ${h.name} (${completions} of ${daysInPeriod} days)`;
+    }).join('\n') || '';
+
     try {
         return await callAIProxy<ReflectionResult>('weekly-reflection', {
             entries: entriesText || 'No entries this week',
-            intentions: intentionsText || 'No active goals'
+            intentions: intentionsText || 'No active goals',
+            habits: habitsText || 'No habits tracked'
         });
     } catch (e) {
         console.error('[Reflection] Weekly reflection failed:', e);
@@ -68,7 +78,10 @@ export const generateWeeklyReflection = async (
 // --- MONTHLY REFLECTION ---
 export const generateMonthlyReflection = async (
     entries: Entry[],
-    intentions: Intention[]
+    intentions: Intention[],
+    habits?: Habit[],
+    habitLogs?: HabitLog[],
+    daysInPeriod: number = 30
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleDateString()}] ${e.primary_sentiment}: ${e.title}`
@@ -78,10 +91,18 @@ export const generateMonthlyReflection = async (
         `Goal: ${i.text} (${i.status})`
     ).join('\n');
 
+    // Show habit completion rates for the month
+    const habitsText = habits?.map(h => {
+        const completions = habitLogs?.filter(l => l.habit_id === h.id).length || 0;
+        const rate = daysInPeriod > 0 ? Math.round((completions / daysInPeriod) * 100) : 0;
+        return `Habit: ${h.name} (${completions} of ${daysInPeriod} days - ${rate}%)`;
+    }).join('\n') || '';
+
     try {
         return await callAIProxy<ReflectionResult>('monthly-reflection', {
             entries: entriesText || 'No entries this month',
-            intentions: intentionsText || 'No active goals'
+            intentions: intentionsText || 'No active goals',
+            habits: habitsText || 'No habits tracked'
         });
     } catch (e) {
         console.error('[Reflection] Monthly reflection failed:', e);

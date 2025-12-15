@@ -21,10 +21,10 @@ export const getDisplayDate = (dateString: string): string => {
   // FIX: Create a Date object from the ISO string. 
   // This automatically handles the conversion from UTC (DB) to Local Time (Browser).
   const date = new Date(dateString);
-  
+
   // Get the YYYY-MM-DD string for the Local Time version of the date
   const dateInputFormatted = getFormattedDate(date);
-  
+
   const todayFormatted = getFormattedDate(today);
   const yesterdayFormatted = getFormattedDate(yesterday);
 
@@ -43,28 +43,28 @@ export const getDisplayDate = (dateString: string): string => {
 };
 
 export const isSameDay = (date1: Date, date2: Date): boolean => {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
+  return date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate();
 }
 
 export const isDateInCurrentWeek = (date: Date): boolean => {
-    const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    startOfWeek.setHours(0, 0, 0, 0);
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
-    return date >= startOfWeek && date <= endOfWeek;
+  const now = new Date();
+  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  return date >= startOfWeek && date <= endOfWeek;
 }
 
 export const isDateInCurrentMonth = (date: Date): boolean => {
-    const now = new Date();
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  const now = new Date();
+  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
 }
 
 export const isDateInCurrentYear = (date: Date): boolean => {
-    return date.getFullYear() === new Date().getFullYear();
+  return date.getFullYear() === new Date().getFullYear();
 }
 
 /**
@@ -102,15 +102,15 @@ export const getMonthId = (date: Date): string => {
  * Converts a week ID string back to a Date object (start of that week).
  */
 export const getDateFromWeekId = (weekId: string): Date => {
-    const [year, week] = weekId.split('-W').map(Number);
-    const simple = new Date(year, 0, 1 + (week - 1) * 7);
-    const dow = simple.getDay();
-    const isoWeekStart = simple;
-    if (dow <= 4)
-        isoWeekStart.setDate(simple.getDate() - simple.getDay() + 1);
-    else
-        isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
-    return isoWeekStart;
+  const [year, week] = weekId.split('-W').map(Number);
+  const simple = new Date(year, 0, 1 + (week - 1) * 7);
+  const dow = simple.getDay();
+  const isoWeekStart = simple;
+  if (dow <= 4)
+    isoWeekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  else
+    isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
+  return isoWeekStart;
 }
 
 /**
@@ -118,8 +118,8 @@ export const getDateFromWeekId = (weekId: string): Date => {
  * e.g., "Week of July 15, 2024"
  */
 export const getWeekDisplay = (weekId: string): string => {
-    const startDate = getDateFromWeekId(weekId);
-    return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+  const startDate = getDateFromWeekId(weekId);
+  return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 }
 
 /**
@@ -127,9 +127,47 @@ export const getWeekDisplay = (weekId: string): string => {
  * e.g., "July 2024"
  */
 export const getMonthDisplay = (monthId: string): string => {
-    const [year, month] = monthId.split('-').map(Number);
-    const date = new Date(year, month - 1, 1);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const [year, month] = monthId.split('-').map(Number);
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Returns the start and end dates for a given week ID.
+ * Useful for filtering data by week.
+ */
+export const getWeekDateRange = (weekId: string): { start: Date; end: Date } => {
+  const startDate = getDateFromWeekId(weekId);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 6);
+  endDate.setHours(23, 59, 59, 999);
+
+  return { start: startDate, end: endDate };
+}
+
+/**
+ * Returns the start and end dates for a given month ID.
+ * Useful for filtering data by month.
+ */
+export const getMonthDateRange = (monthId: string): { start: Date; end: Date } => {
+  const [year, month] = monthId.split('-').map(Number);
+
+  const startDate = new Date(year, month - 1, 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(year, month, 0); // Last day of month
+  endDate.setHours(23, 59, 59, 999);
+
+  return { start: startDate, end: endDate };
+}
+
+/**
+ * Checks if a date falls within a given date range.
+ */
+export const isWithinRange = (date: Date, range: { start: Date; end: Date }): boolean => {
+  return date >= range.start && date <= range.end;
 }
 
 /**
@@ -139,51 +177,51 @@ export const getMonthDisplay = (monthId: string): string => {
  * @returns boolean
  */
 export const checkStreakContinuity = (lastLogDate: Date, frequency: 'daily' | 'weekly' | 'monthly'): boolean => {
-    const now = new Date();
-    const last = new Date(lastLogDate);
-    
-    // Reset times to compare dates only (Local Time)
-    now.setHours(0,0,0,0);
-    last.setHours(0,0,0,0);
+  const now = new Date();
+  const last = new Date(lastLogDate);
 
-    if (frequency === 'daily') {
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        // Streak is valid if done Today OR Yesterday.
-        if (isSameDay(last, now) || isSameDay(last, yesterday)) {
-            return true;
-        }
-        return false;
+  // Reset times to compare dates only (Local Time)
+  now.setHours(0, 0, 0, 0);
+  last.setHours(0, 0, 0, 0);
+
+  if (frequency === 'daily') {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Streak is valid if done Today OR Yesterday.
+    if (isSameDay(last, now) || isSameDay(last, yesterday)) {
+      return true;
     }
-    
-    if (frequency === 'weekly') {
-        const currentWeekId = getWeekId(now);
-        const lastLogWeekId = getWeekId(last);
-        
-        if (currentWeekId === lastLogWeekId) return true;
-        
-        // Check previous week
-        const prevWeekDate = new Date(now);
-        prevWeekDate.setDate(prevWeekDate.getDate() - 7);
-        const prevWeekId = getWeekId(prevWeekDate);
-        
-        return lastLogWeekId === prevWeekId;
-    }
-    
-    if (frequency === 'monthly') {
-        const currentMonthId = getMonthId(now);
-        const lastLogMonthId = getMonthId(last);
-        
-        if (currentMonthId === lastLogMonthId) return true;
-        
-        // Check previous month
-        const prevMonthDate = new Date(now);
-        prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-        const prevMonthId = getMonthId(prevMonthDate);
-        
-        return lastLogMonthId === prevMonthId;
-    }
-    
     return false;
+  }
+
+  if (frequency === 'weekly') {
+    const currentWeekId = getWeekId(now);
+    const lastLogWeekId = getWeekId(last);
+
+    if (currentWeekId === lastLogWeekId) return true;
+
+    // Check previous week
+    const prevWeekDate = new Date(now);
+    prevWeekDate.setDate(prevWeekDate.getDate() - 7);
+    const prevWeekId = getWeekId(prevWeekDate);
+
+    return lastLogWeekId === prevWeekId;
+  }
+
+  if (frequency === 'monthly') {
+    const currentMonthId = getMonthId(now);
+    const lastLogMonthId = getMonthId(last);
+
+    if (currentMonthId === lastLogMonthId) return true;
+
+    // Check previous month
+    const prevMonthDate = new Date(now);
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonthId = getMonthId(prevMonthDate);
+
+    return lastLogMonthId === prevMonthId;
+  }
+
+  return false;
 }

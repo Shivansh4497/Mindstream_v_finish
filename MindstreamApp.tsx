@@ -422,7 +422,26 @@ export const MindstreamApp: React.FC = () => {
                                     }}
                                     onGenerateWeekly={async (weekId, weekEntries) => {
                                         actions.setIsGeneratingReflection(weekId);
-                                        const res = await reflections.generateWeeklyReflection(weekEntries, state.intentions);
+
+                                        // Get week date range for filtering
+                                        const { getWeekDateRange, isWithinRange } = await import('./utils/date');
+                                        const weekRange = getWeekDateRange(weekId);
+
+                                        // Filter intentions: created or completed in this week
+                                        const weekIntentions = state.intentions.filter(i => {
+                                            const createdAt = new Date(i.created_at);
+                                            const completedAt = i.completed_at ? new Date(i.completed_at) : null;
+                                            return i.status === 'pending' ||
+                                                isWithinRange(createdAt, weekRange) ||
+                                                (completedAt && isWithinRange(completedAt, weekRange));
+                                        });
+
+                                        // Filter habitLogs for this week
+                                        const weekHabitLogs = state.habitLogs.filter(l =>
+                                            isWithinRange(new Date(l.completed_at), weekRange)
+                                        );
+
+                                        const res = await reflections.generateWeeklyReflection(weekEntries, weekIntentions, state.habits, weekHabitLogs, 7);
                                         const saved = await db.addReflection(user!.id, { ...res, date: weekId, type: 'weekly' });
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), saved]);
                                         actions.setIsGeneratingReflection(null);
@@ -430,7 +449,27 @@ export const MindstreamApp: React.FC = () => {
                                     }}
                                     onGenerateMonthly={async (monthId, monthEntries) => {
                                         actions.setIsGeneratingReflection(monthId);
-                                        const res = await reflections.generateMonthlyReflection(monthEntries, state.intentions);
+
+                                        // Get month date range for filtering
+                                        const { getMonthDateRange, isWithinRange } = await import('./utils/date');
+                                        const monthRange = getMonthDateRange(monthId);
+                                        const daysInMonth = Math.ceil((monthRange.end.getTime() - monthRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                                        // Filter intentions: created or completed in this month
+                                        const monthIntentions = state.intentions.filter(i => {
+                                            const createdAt = new Date(i.created_at);
+                                            const completedAt = i.completed_at ? new Date(i.completed_at) : null;
+                                            return i.status === 'pending' ||
+                                                isWithinRange(createdAt, monthRange) ||
+                                                (completedAt && isWithinRange(completedAt, monthRange));
+                                        });
+
+                                        // Filter habitLogs for this month
+                                        const monthHabitLogs = state.habitLogs.filter(l =>
+                                            isWithinRange(new Date(l.completed_at), monthRange)
+                                        );
+
+                                        const res = await reflections.generateMonthlyReflection(monthEntries, monthIntentions, state.habits, monthHabitLogs, daysInMonth);
                                         const saved = await db.addReflection(user!.id, { ...res, date: monthId, type: 'monthly' });
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), saved]);
                                         actions.setIsGeneratingReflection(null);

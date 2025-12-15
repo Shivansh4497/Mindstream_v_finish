@@ -534,12 +534,13 @@ Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "Max 15
                 }
 
                 case 'monthly-reflection': {
-                    const { entries, intentions } = payload;
+                    const { entries, intentions, habits } = payload;
                     const prompt = `You are the user's wise life coach. Generate a Monthly Reflection. Respond with ONLY valid JSON.
 
 THIS MONTH'S DATA:
 Entries: ${entries || 'No entries this month'}
 Goals: ${intentions || 'No active goals'}
+Habits: ${habits || 'No habits tracked'}
 
 VOICE RULES (CRITICAL):
 - ALWAYS use second-person: "you", "your", "you've"
