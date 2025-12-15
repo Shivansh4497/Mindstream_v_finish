@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, isSameDay, parseISO } from 'date-fns';
 import { useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { NavBar, View } from './components/NavBar';
@@ -401,7 +401,20 @@ export const MindstreamApp: React.FC = () => {
                                     habitLogs={state.habitLogs}
                                     onGenerateDaily={async (date, dayEntries) => {
                                         actions.setIsGeneratingReflection(date);
-                                        const res = await reflections.generateReflection(dayEntries, state.intentions, state.habits, state.habitLogs);
+
+                                        // Filter intentions: pending OR completed on this specific date
+                                        const targetDate = parseISO(date);
+                                        const dayIntentions = state.intentions.filter(i =>
+                                            i.status === 'pending' ||
+                                            (i.completed_at && isSameDay(parseISO(i.completed_at), targetDate))
+                                        );
+
+                                        // Filter habitLogs for this specific date only
+                                        const dayHabitLogs = state.habitLogs.filter(l =>
+                                            isSameDay(parseISO(l.completed_at), targetDate)
+                                        );
+
+                                        const res = await reflections.generateReflection(dayEntries, dayIntentions, state.habits, dayHabitLogs, date);
                                         const saved = await db.addReflection(user!.id, { ...res, date, type: 'daily' });
                                         actions.setReflections(prev => [...prev.filter(r => !(r.date === date && r.type === 'daily')), saved]);
                                         actions.setIsGeneratingReflection(null);

@@ -11,7 +11,8 @@ export const generateReflection = async (
     entries: Entry[],
     intentions: Intention[],
     habits?: Habit[],
-    habitLogs?: HabitLog[]
+    habitLogs?: HabitLog[],
+    targetDate?: string  // Date for which to generate reflection (YYYY-MM-DD format)
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.primary_sentiment}: ${e.text}`
@@ -21,9 +22,10 @@ export const generateReflection = async (
         `Goal: ${i.text} (${i.status})`
     ).join('\n');
 
+    // Show whether each habit was completed on the target date
     const habitsText = habits?.map(h => {
-        const logs = habitLogs?.filter(l => l.habit_id === h.id).length || 0;
-        return `Habit: ${h.name} (Done ${logs} times)`;
+        const completedToday = habitLogs?.some(l => l.habit_id === h.id);
+        return `Habit: ${h.name} (${completedToday ? 'Done today ✅' : 'Not done today ❌'})`;
     }).join('\n') || '';
 
     try {
@@ -37,6 +39,7 @@ export const generateReflection = async (
         return { summary: 'Unable to generate reflection', suggestions: [] };
     }
 };
+
 
 // --- WEEKLY REFLECTION ---
 export const generateWeeklyReflection = async (
