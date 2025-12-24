@@ -135,7 +135,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isLoa
               handleSubmit();
             }
           }}
-          placeholder={isListening ? "Listening..." : "Ask me anything..."}
+          placeholder={isListening ? "Listening..." : "What's on your mind?"}
           className="w-full bg-dark-surface-light rounded-lg p-3 text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow"
           rows={1}
           disabled={isLoading}

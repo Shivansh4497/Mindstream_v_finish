@@ -8,7 +8,7 @@ import type { Entry, Reflection, Intention, Message, IntentionTimeframe, Habit, 
 import { isSameDay, getWeekId, getMonthId } from '../utils/date';
 import { calculateStreak } from '../utils/streak';
 
-const INITIAL_GREETING = "Hello! I'm Mindstream. You can ask me anything about your thoughts, feelings, or goals. How can I help you today?";
+const INITIAL_GREETING = "Hey! I'm here to help you reflect on what's on your mind. I can see your journal entries and help you spot patterns. What's going on today?";
 const PAGE_SIZE = 20;
 
 export const useAppLogic = () => {

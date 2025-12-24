@@ -29,7 +29,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   showInsightsBadge = false
 }) => {
   const navItems = [
-    { id: 'stream', label: 'Stream', icon: StreamIcon },
+    { id: 'stream', label: 'Journal', icon: StreamIcon },
     { id: 'habits', label: 'Habits', icon: Repeat },
     { id: 'goals', label: 'Goals', icon: Target },
     { id: 'insights', label: 'Insights', icon: Sparkles },

@@ -38,11 +38,10 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onQuickStart, onGu
 
                 {/* Headline */}
                 <h1 className="text-4xl md:text-5xl font-bold font-display text-white mb-4">
-                    Your Private Sanctuary
+                    Think Out Loud.<br />Spot the Patterns.
                 </h1>
                 <p className="text-lg text-gray-300 mb-12 leading-relaxed">
-                    Mindstream is an encrypted space for your unfiltered mind.
-                    What you write here is seen only by you.
+                    Mindstream is a journaling companion that helps you understand your patterns—not a general-purpose chatbot.
                 </p>
 
                 {/* Choice Cards */}
