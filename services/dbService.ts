@@ -19,6 +19,21 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
     return data;
 };
 
+export const updateProfile = async (userId: string, updates: Partial<Profile>): Promise<Profile | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+    if (error) {
+        console.error('Error updating profile:', error);
+        return null;
+    }
+    return data;
+};
+
 // Cache for account creation timestamps to avoid repeated DB calls
 const accountCreatedAtCache: Map<string, string> = new Map();
 

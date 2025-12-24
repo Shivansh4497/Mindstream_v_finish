@@ -38,6 +38,8 @@ import { generateYearlyReview, YearlyReviewData } from './services/yearlyReviewS
 
 import { useAppLogic } from './hooks/useAppLogic';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useFTUE, isFTUECompletedLocally } from './hooks/useFTUE';
+import { FTUETour } from './components/FTUETour';
 import * as gemini from './services/geminiService';
 import * as reflections from './services/reflectionService';
 import * as db from './services/dbService';
@@ -93,6 +95,14 @@ export const MindstreamApp: React.FC = () => {
     // Count real entries (exclude temp entries)
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
     const insightsUnlocked = realEntryCount >= 5;
+
+    // FTUE Tour - show after first entry for new users
+    const shouldShowFTUE = realEntryCount === 1 && !isFTUECompletedLocally();
+    const ftue = useFTUE(shouldShowFTUE, async () => {
+        if (user) {
+            await db.updateProfile(user.id, { ftue_completed: true });
+        }
+    });
 
     // Progressive unlock thresholds for reflections
     const WEEKLY_UNLOCK = { days: 3, entries: 5 };
@@ -659,6 +669,17 @@ export const MindstreamApp: React.FC = () => {
                         />
                     )}
                 </AnimatePresence>
+
+                {/* FTUE Guided Tour */}
+                <FTUETour
+                    isActive={ftue.isActive}
+                    currentStep={ftue.currentStep}
+                    onNext={ftue.nextStep}
+                    onBack={ftue.prevStep}
+                    onSkip={ftue.skipTour}
+                    onComplete={ftue.completeTour}
+                    onNavigate={(tab) => setView(tab)}
+                />
             </div>
         </ErrorBoundary>
     );

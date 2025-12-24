@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { Intention, IntentionStatus } from '../types';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
-import { Star } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { celebrate, CelebrationType } from '../utils/celebrations';
 import { triggerHaptic } from '../utils/haptics';
 import { formatDueDate } from '../utils/etaCalculator';
@@ -17,6 +17,7 @@ interface IntentionCardProps {
 
 export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggle, onDelete, onStarToggle, onEdit }) => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showNotes, setShowNotes] = useState(false);
 
   const handleToggle = () => {
     const isCompleting = intention.status === 'pending';
@@ -39,55 +40,76 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
   const dueDate = intention.due_date ? new Date(intention.due_date) : null;
   const isLifeGoal = intention.is_life_goal || false;
   const dueDateText = formatDueDate(dueDate, isLifeGoal);
+  const hasNotes = !!intention.notes?.trim();
 
   return (
-    <div ref={cardRef} className={`flex items-start bg-dark-surface p-4 rounded-lg mb-3 transition-all duration-300 animate-fade-in-up hover:bg-white/5 ${intention.is_starred ? 'ring-1 ring-amber-400/30 bg-amber-400/5' : ''}`}>
-      <input
-        type="checkbox"
-        checked={intention.status === 'completed'}
-        onChange={handleToggle}
-        className="w-6 h-6 mt-0.5 text-brand-teal bg-gray-700 border-gray-600 rounded focus:ring-brand-teal focus:ring-2 cursor-pointer transition-transform hover:scale-110 flex-shrink-0"
-      />
-      <div className="flex-grow mx-4">
-        <span className={`text-lg block ${intention.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
-          {intention.emoji && <span className="mr-2">{intention.emoji}</span>}
-          {intention.text}
-        </span>
-        <span className={`text-sm block mt-1 ${intention.status === 'completed' ? 'text-gray-500' : 'text-gray-300'}`}>
-          {dueDateText}
-          {intention.category && <span className="ml-2 text-gray-400">• {intention.category}</span>}
-        </span>
+    <div ref={cardRef} className={`flex flex-col bg-dark-surface p-4 rounded-lg mb-3 transition-all duration-300 animate-fade-in-up hover:bg-white/5 ${intention.is_starred ? 'ring-1 ring-amber-400/30 bg-amber-400/5' : ''}`}>
+      <div className="flex items-start">
+        <input
+          type="checkbox"
+          checked={intention.status === 'completed'}
+          onChange={handleToggle}
+          className="w-6 h-6 mt-0.5 text-brand-teal bg-gray-700 border-gray-600 rounded focus:ring-brand-teal focus:ring-2 cursor-pointer transition-transform hover:scale-110 flex-shrink-0"
+        />
+        <div className="flex-grow mx-4">
+          <span className={`text-lg block ${intention.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+            {intention.emoji && <span className="mr-2">{intention.emoji}</span>}
+            {intention.text}
+          </span>
+          <span className={`text-sm block mt-1 ${intention.status === 'completed' ? 'text-gray-500' : 'text-gray-300'}`}>
+            {dueDateText}
+            {intention.category && <span className="ml-2 text-gray-400">• {intention.category}</span>}
+          </span>
+
+          {/* Notes indicator - tap to expand */}
+          {hasNotes && (
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className="flex items-center gap-1 mt-2 text-sm text-gray-400 hover:text-brand-teal transition-colors"
+            >
+              📝 Notes
+              {showNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Star Button */}
+        {onStarToggle && (
+          <button
+            onClick={() => onStarToggle(intention.id, intention.is_starred || false)}
+            className={`p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0 mr-1 ${intention.is_starred ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
+            aria-label="Toggle star"
+          >
+            <Star className={`w-5 h-5 ${intention.is_starred ? 'fill-amber-400' : ''}`} />
+          </button>
+        )}
+
+        {/* Edit Button */}
+        {onEdit && (
+          <button
+            onClick={() => onEdit(intention)}
+            className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-brand-teal transition-colors flex-shrink-0"
+            aria-label="Edit intention"
+          >
+            <PencilIcon className="w-5 h-5" />
+          </button>
+        )}
+
+        <button
+          onClick={() => onDelete(intention.id)}
+          className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
+          aria-label="Delete intention"
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Star Button */}
-      {onStarToggle && (
-        <button
-          onClick={() => onStarToggle(intention.id, intention.is_starred || false)}
-          className={`p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0 mr-1 ${intention.is_starred ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
-          aria-label="Toggle star"
-        >
-          <Star className={`w-5 h-5 ${intention.is_starred ? 'fill-amber-400' : ''}`} />
-        </button>
+      {/* Expanded Notes Section */}
+      {hasNotes && showNotes && (
+        <div className="mt-3 ml-10 p-3 bg-dark-surface-light rounded-lg text-sm text-gray-300 whitespace-pre-wrap border-l-2 border-brand-teal/30">
+          {intention.notes}
+        </div>
       )}
-
-      {/* Edit Button */}
-      {onEdit && (
-        <button
-          onClick={() => onEdit(intention)}
-          className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-brand-teal transition-colors flex-shrink-0"
-          aria-label="Edit intention"
-        >
-          <PencilIcon className="w-5 h-5" />
-        </button>
-      )}
-
-      <button
-        onClick={() => onDelete(intention.id)}
-        className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
-        aria-label="Delete intention"
-      >
-        <TrashIcon className="w-5 h-5" />
-      </button>
     </div>
   );
 };

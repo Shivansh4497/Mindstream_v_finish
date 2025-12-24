@@ -5,6 +5,7 @@ export interface Profile {
   email: string;
   avatar_url?: string;
   created_at?: string;
+  ftue_completed?: boolean;
 }
 
 export type GranularSentiment = 'Joyful' | 'Grateful' | 'Proud' | 'Hopeful' | 'Content' |
@@ -74,6 +75,7 @@ export interface Intention {
   user_id: string;
   text: string;
   status: IntentionStatus;
+  notes?: string; // Optional notes/context for the goal
   emoji?: string; // NEW: AI-assigned emoji
   category?: 'Health' | 'Growth' | 'Career' | 'Finance' | 'Connection' | 'System'; // NEW: AI-assigned category
   timeframe?: IntentionTimeframe; //  Deprecated, use due_date instead

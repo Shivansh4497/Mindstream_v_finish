@@ -18,6 +18,7 @@ const COMMON_EMOJIS = ['🎯', '🚀', '💪', '📚', '💼', '💰', '❤️',
 
 export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intention, onSave, onCancel }) => {
     const [text, setText] = useState(intention.text);
+    const [notes, setNotes] = useState(intention.notes || '');
     const [emoji, setEmoji] = useState(intention.emoji || '🎯');
     const [category, setCategory] = useState<string>(intention.category || 'Growth');
     const [showETASelector, setShowETASelector] = useState(false);
@@ -41,6 +42,7 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
 
     const hasChanged =
         text !== intention.text ||
+        notes !== (intention.notes || '') ||
         emoji !== intention.emoji ||
         category !== intention.category ||
         selectedPreset !== getInitialPreset() ||
@@ -52,6 +54,7 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
 
         const updates: Partial<Intention> = {
             text: text.trim(),
+            notes: notes.trim() || undefined,
             emoji,
             category: category as any,
             due_date: selectedDueDate?.toISOString() || null,
@@ -150,6 +153,18 @@ export const EditIntentionModal: React.FC<EditIntentionModalProps> = ({ intentio
                         rows={3}
                         className="w-full bg-dark-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow resize-none border border-white/10"
                         placeholder="What do you want to achieve?"
+                    />
+                </div>
+
+                {/* Notes Input */}
+                <div className="mb-4">
+                    <label className="text-sm text-gray-400 mb-1 block">Notes (optional)</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        className="w-full bg-dark-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-teal focus:outline-none transition-shadow resize-none border border-white/10 text-sm"
+                        placeholder="Add context, milestones, or reminders..."
                     />
                 </div>
 
