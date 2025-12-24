@@ -60,16 +60,39 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
             {dueDateText}
             {intention.category && <span className="ml-2 text-gray-400">• {intention.category}</span>}
           </span>
+          {/* Notes: inline preview or Add notes prompt */}
+          {hasNotes ? (
+            <div className="mt-2">
+              {/* Inline preview - first ~50 chars */}
+              <button
+                onClick={() => setShowNotes(!showNotes)}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-brand-teal transition-colors w-full text-left"
+              >
+                <span className="text-gray-500">📝</span>
+                <span className="text-gray-300 italic truncate flex-1">
+                  "{intention.notes!.slice(0, 50)}{intention.notes!.length > 50 ? '...' : ''}"
+                </span>
+                {intention.notes!.length > 50 && (
+                  showNotes ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                )}
+              </button>
 
-          {/* Notes indicator - tap to expand */}
-          {hasNotes && (
-            <button
-              onClick={() => setShowNotes(!showNotes)}
-              className="flex items-center gap-1 mt-2 text-sm text-gray-400 hover:text-brand-teal transition-colors"
-            >
-              📝 Notes
-              {showNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+              {/* Expanded full notes */}
+              {showNotes && intention.notes!.length > 50 && (
+                <div className="mt-2 p-3 bg-dark-surface-light rounded-lg text-sm text-gray-300 whitespace-pre-wrap border-l-2 border-brand-teal/30">
+                  {intention.notes}
+                </div>
+              )}
+            </div>
+          ) : (
+            onEdit && (
+              <button
+                onClick={() => onEdit(intention)}
+                className="mt-2 text-sm text-gray-500 hover:text-brand-teal transition-colors"
+              >
+                + Add notes
+              </button>
+            )
           )}
         </div>
 
@@ -103,13 +126,6 @@ export const IntentionCard: React.FC<IntentionCardProps> = ({ intention, onToggl
           <TrashIcon className="w-5 h-5" />
         </button>
       </div>
-
-      {/* Expanded Notes Section */}
-      {hasNotes && showNotes && (
-        <div className="mt-3 ml-10 p-3 bg-dark-surface-light rounded-lg text-sm text-gray-300 whitespace-pre-wrap border-l-2 border-brand-teal/30">
-          {intention.notes}
-        </div>
-      )}
     </div>
   );
 };
