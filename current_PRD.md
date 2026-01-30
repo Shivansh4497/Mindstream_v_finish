@@ -1,6 +1,6 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.8  
-**Last Updated:** December 12, 2025 (Chat Takeaways Feature)  
+**Version:** 6.9
+**Last Updated:** January 30, 2026 (Soft Deletes & Automation Suite)
 **Status:** Production (MVP Ready - Invite-Only Launch)  
 **Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
@@ -23,6 +23,12 @@
 10. [AI System](#10-ai-system)
 11. [Design System & UI/UX](#11-design-system--uiux)
 12. [Security & Privacy](#12-security--privacy)
+    12.1 [Data Ownership](#121-data-ownership)
+    12.2 [Authentication](#122-authentication)
+    12.3 [Row Level Security (RLS)](#123-row-level-security-rls)
+    12.4 [API Keys](#124-api-keys)
+    12.5 [Data Safety Strategy (NEW v6.9)](#125-data-safety-strategy-new-v69)
+    12.6 [Automated Quality Assurance (NEW v6.9)](#126-automated-quality-assurance-new-v69)
 13. [Deployment & DevOps](#13-deployment--devops)
 14. [Future Roadmap](#14-future-roadmap)
 
@@ -1803,6 +1809,28 @@ create policy "Users can view own habit logs"
 **Roadmap:** Move to Supabase Edge Functions to hide API key
 
 ---
+
+### 10.5 Data Safety Strategy (NEW v6.9)
+
+**Problem:** Accidental deletion of high-value data (journals) is catastrophic.
+**Solution:** "Fix It Once and For All" with **Soft Deletes**.
+
+-   **Mechanism:** All user-facing tables (`entries`, `habits`, `intentions`, `reflections`) have a `deleted_at` timestamp.
+-   **User Action:** "Delete" button sets `deleted_at = NOW()`.
+-   **App Behavior:** App filters `WHERE deleted_at IS NULL`. Item vanishes instantly but remains in DB.
+-   **Recovery:** Support team can manually restore data by setting `deleted_at = NULL`.
+-   **Hard Deletes:** Reserved ONLY for "Delete Account" actions (compliance).
+
+### 10.6 Automated Quality Assurance (NEW v6.9)
+To prevent regression of critical safety features, we maintain an automated test suite.
+
+-   **Tooling:** `vitest` + `happy-dom`
+-   **Coverage:** 100% of Core Business Logic
+    -   Journaling (Create/Update)
+    -   Habits (Upsert/Delete Logic)
+    -   Goals (Status Toggles)
+    -   Profile (Onboarding/Reset)
+-   **Safety Check:** Explicitly verifies that `delete` functions call `UPDATE` (Soft Delete) and never `DELETE` (Hard Delete).
 
 ## 11. Deployment & DevOps
 
