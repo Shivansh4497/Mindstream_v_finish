@@ -16,7 +16,7 @@ export const extractSearchKeywords = async (userQuery: string): Promise<string[]
     }
 };
 
-const buildSystemContext = (context: UserContext): string => {
+export const buildSystemContext = (context: UserContext): string => {
     // Optimize Context Window: Limit tokens by slicing arrays
     const recentEntriesSummary = context.recentEntries
         .slice(0, 10) // Limit to 10 most recent
