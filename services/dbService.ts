@@ -68,18 +68,27 @@ export const resetAccountData = async (userId: string): Promise<boolean> => {
     try {
         console.log('[resetAccountData] Starting full account reset for user:', userId);
 
-        // Delete all user data (order matters for foreign key constraints)
-        await (supabase as any).from('habit_logs').delete().eq('user_id', userId);
-        await (supabase as any).from('habits').delete().eq('user_id', userId);
-        await (supabase as any).from('intentions').delete().eq('user_id', userId);
-        await (supabase as any).from('reflections').delete().eq('user_id', userId);
-        await (supabase as any).from('entries').delete().eq('user_id', userId);
-        await (supabase as any).from('proactive_nudges').delete().eq('user_id', userId);
-        await (supabase as any).from('chart_insights').delete().eq('user_id', userId);
-        await (supabase as any).from('analytics_events').delete().eq('user_id', userId);
+        // Update deleted_at for all user data (Soft Delete)
+        const deletedAt = new Date().toISOString();
+        await (supabase as any).from('habit_logs').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('habits').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('intentions').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('reflections').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('entries').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('proactive_nudges').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('chart_insights').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('analytics_events').update({ deleted_at: deletedAt }).eq('user_id', userId);
 
         // Update profile.created_at to NOW - this is the key for timestamp filtering
         const now = new Date().toISOString();
+
+        // 1. Update Auth Metadata (Source of Truth for "Fresh Start")
+        const { error: authError } = await supabase.auth.updateUser({
+            data: { last_reset_at: now }
+        });
+        if (authError) console.error('[resetAccountData] Warning: Failed to update auth metadata:', authError);
+
+        // 2. Update Public Profile
         const { error: profileError } = await (supabase as any)
             .from('profiles')
             .update({ created_at: now })
@@ -103,6 +112,41 @@ export const resetAccountData = async (userId: string): Promise<boolean> => {
 
 export const createProfile = async (user: User): Promise<Profile | null> => {
     if (!supabase) throw new Error("Supabase client not initialized");
+
+    // 1. Check Metadata (The "Intentional Reset" Truth)
+    const lastResetAt = user.user_metadata?.last_reset_at;
+
+    // 2. Check Heritage (The "Glitch" Backup) - Find oldest entry
+    let oldestEntryTimestamp: string | null = null;
+    try {
+        const { data: oldestEntry } = await supabase
+            .from('entries')
+            .select('timestamp')
+            .eq('user_id', user.id)
+            .order('timestamp', { ascending: true })
+            .limit(1)
+            .single();
+        if (oldestEntry) oldestEntryTimestamp = oldestEntry.timestamp;
+    } catch (e) {
+        console.warn('Error checking heritage data:', e);
+    }
+
+    // 3. Decide Effective Creation Date
+    let effectiveCreatedAt = new Date().toISOString();
+
+    if (lastResetAt) {
+        // CASE A: User explicitly deleted account previously. Respect that reset.
+        console.log('[Profile] Restoring from explicit reset point:', lastResetAt);
+        effectiveCreatedAt = lastResetAt;
+    } else if (oldestEntryTimestamp) {
+        // CASE B: No explicit reset, but data exists. Must be a glitch/recovery. Restore access.
+        // We set creation date to slightly before the oldest entry to ensure it's included.
+        console.log('[Profile] No reset found. Recovering heritage data from:', oldestEntryTimestamp);
+        effectiveCreatedAt = oldestEntryTimestamp;
+    } else {
+        console.log('[Profile] New user or clean slate. Setting created_at to NOW.');
+    }
+
     // Use upsert to handle account recreation with same email (prevents 409 conflict)
     const { data, error } = await supabase
         .from('profiles')
@@ -110,6 +154,7 @@ export const createProfile = async (user: User): Promise<Profile | null> => {
             id: user.id,
             email: user.email,
             avatar_url: user.user_metadata?.avatar_url || null,
+            created_at: effectiveCreatedAt
         } as any, { onConflict: 'id' })
         .select()
         .single();
@@ -117,6 +162,10 @@ export const createProfile = async (user: User): Promise<Profile | null> => {
         console.error('Error creating/updating profile:', error);
         throw error;
     }
+
+    // Clear cache to ensure app picks up new timestamp
+    clearAccountCreatedAtCache(user.id);
+
     return data;
 };
 
@@ -124,10 +173,19 @@ export const deleteAccount = async (userId: string): Promise<boolean> => {
     if (!supabase) return false;
 
     try {
-        await (supabase as any).from('habits').delete().eq('user_id', userId);
-        await (supabase as any).from('intentions').delete().eq('user_id', userId);
-        await (supabase as any).from('reflections').delete().eq('user_id', userId);
-        await (supabase as any).from('entries').delete().eq('user_id', userId);
+        // Soft Delete all user data
+        const deletedAt = new Date().toISOString();
+        await (supabase as any).from('habits').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('intentions').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('reflections').update({ deleted_at: deletedAt }).eq('user_id', userId);
+        await (supabase as any).from('entries').update({ deleted_at: deletedAt }).eq('user_id', userId);
+
+        // CRITICAL: Mark the reset time in Auth Metadata before deleting profile
+        // This ensures if they sign up again, we know it was an intentional reset
+        await supabase.auth.updateUser({
+            data: { last_reset_at: new Date().toISOString() }
+        });
+
         const { error } = await (supabase as any).from('profiles').delete().eq('id', userId);
 
         if (error) {
@@ -153,7 +211,8 @@ export const getEntries = async (userId: string, page: number = 0, pageSize: num
     let query = supabase
         .from('entries')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null);
 
     // Filter entries created after account recreation
     if (accountCreatedAt) {
@@ -206,7 +265,7 @@ export const deleteEntry = async (entryId: string): Promise<boolean> => {
     if (!supabase) return false;
     const { error } = await (supabase as any)
         .from('entries')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', entryId);
     if (error) {
         console.error('Error deleting entry:', error);
@@ -326,6 +385,7 @@ export const searchEntries = async (userId: string, keywords: string[]): Promise
         .from('entries')
         .select('*')
         .eq('user_id', userId)
+        .is('deleted_at', null)
         .textSearch('text', searchQuery, {
             type: 'websearch',
             config: 'english'
@@ -375,6 +435,7 @@ export const findSimilarMoments = async (
                 .from('entries')
                 .select('*')
                 .eq('user_id', userId)
+                .is('deleted_at', null)
                 .eq('primary_sentiment', currentSentiment)
                 .lt('timestamp', cutoffISO) // Exclude recent
                 .order('timestamp', { ascending: false })
@@ -403,6 +464,7 @@ export const findSimilarMoments = async (
                 .from('entries')
                 .select('*')
                 .eq('user_id', userId)
+                .is('deleted_at', null)
                 .lt('timestamp', cutoffISO)
                 .order('timestamp', { ascending: false })
                 .limit(20); // Fetch more to filter client-side
@@ -480,7 +542,8 @@ export const getReflections = async (userId: string): Promise<Reflection[]> => {
     let query = supabase
         .from('reflections')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null);
 
     // Filter reflections created after account recreation
     if (accountCreatedAt) {
@@ -569,7 +632,8 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
     let query = supabase
         .from('intentions')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null);
 
     // Filter intentions created after account recreation
     if (accountCreatedAt) {
@@ -704,7 +768,7 @@ export const deleteIntention = async (id: string): Promise<boolean> => {
     if (!supabase) return false;
     const { error } = await (supabase as any)
         .from('intentions')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
     if (error) {
         console.error('Error deleting intention:', error);
@@ -725,7 +789,8 @@ export const getHabits = async (userId: string): Promise<Habit[]> => {
     let query = supabase
         .from('habits')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null);
 
     // Filter habits created after account recreation
     if (accountCreatedAt) {
@@ -751,6 +816,7 @@ export const getHabits = async (userId: string): Promise<Habit[]> => {
         .from('habit_logs')
         .select('habit_id, completed_at')
         .in('habit_id', habitIds)
+        .is('deleted_at', null)
         .gte('completed_at', cutoffDate.toISOString())
         .order('completed_at', { ascending: false });
 
@@ -794,7 +860,7 @@ export const getCurrentPeriodHabitLogs = async (userId: string): Promise<HabitLo
     now.setHours(0, 0, 0, 0);
     const startOfPeriod = now.toISOString();
 
-    const { data: habits } = await supabase.from('habits').select('id').eq('user_id', userId);
+    const { data: habits } = await supabase.from('habits').select('id').eq('user_id', userId).is('deleted_at', null);
     if (!habits || habits.length === 0) return [];
 
     const habitIds = habits.map((h: any) => h.id);
@@ -804,6 +870,7 @@ export const getCurrentPeriodHabitLogs = async (userId: string): Promise<HabitLo
         .from('habit_logs')
         .select('*')
         .in('habit_id', habitIds)
+        .is('deleted_at', null)
         .gte('completed_at', startOfPeriod);
 
     if (error) return [];
@@ -856,8 +923,11 @@ export const updateHabit = async (habitId: string, updates: Partial<Habit>): Pro
 
 export const deleteHabit = async (habitId: string): Promise<boolean> => {
     if (!supabase) return false;
-    // FIX: Cast supabase to any
-    const { error } = await (supabase as any).from('habits').delete().eq('id', habitId);
+    // Soft Delete
+    const { error } = await (supabase as any)
+        .from('habits')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', habitId);
     if (error) return false;
     return true;
 }
@@ -945,6 +1015,7 @@ export const syncHabitCompletion = async (
         .from('habit_logs')
         .select('completed_at')
         .eq('habit_id', habitId)
+        .is('deleted_at', null)
         .gte('completed_at', cutoffDate.toISOString());
 
     const logDates = ((allLogs as any[]) || []).map(l => new Date(l.completed_at));
@@ -978,6 +1049,7 @@ export const getInsightCards = async (userId: string): Promise<any[]> => {
             .from('insight_cards')
             .select('*')
             .eq('user_id', userId)
+            .is('deleted_at', null)
             .eq('dismissed', false)
             .order('created_at', { ascending: false });
 
@@ -1044,6 +1116,7 @@ export const getAutoReflections = async (userId: string, limit: number = 1): Pro
             .from('reflections')
             .select('*')
             .eq('user_id', userId)
+            .is('deleted_at', null)
             .eq('auto_generated', true)
             .order('timestamp', { ascending: false })
             .limit(limit);
@@ -1188,6 +1261,7 @@ export const getRecentNudges = async (userId: string, patternType: string): Prom
         .from('proactive_nudges')
         .select('*')
         .eq('user_id', userId)
+        .is('deleted_at', null)
         .eq('pattern_type', patternType)
         .gte('created_at', yesterday.toISOString());
 
@@ -1201,6 +1275,7 @@ export const getPendingNudges = async (userId: string): Promise<any[]> => {
         .from('proactive_nudges')
         .select('*')
         .eq('user_id', userId)
+        .is('deleted_at', null)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
@@ -1395,9 +1470,9 @@ export const deleteUserChatFeedback = async (userId: string): Promise<boolean> =
     if (!supabase) return false;
 
     try {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('chat_feedback')
-            .delete()
+            .update({ deleted_at: new Date().toISOString() } as any)
             .eq('user_id', userId);
 
         if (error) {
