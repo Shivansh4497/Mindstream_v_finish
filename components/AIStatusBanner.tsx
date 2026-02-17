@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AIStatus } from '../MindstreamApp';
+import type { AIStatus } from '../types';
 
 interface AIStatusBannerProps {
   status: AIStatus;

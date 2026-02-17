@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { SparklesIcon } from './icons/SparklesIcon';
-import { XIcon } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Nudge } from '../types';
 
 interface ProactiveNudgeProps {
@@ -51,7 +51,7 @@ export const ProactiveNudge: React.FC<ProactiveNudgeProps> = ({ nudge, onAccept,
                     onClick={() => onDismiss(nudge)}
                     className="text-gray-400 hover:text-white transition-colors"
                 >
-                    <XIcon className="w-4 h-4" />
+                    <X className="w-4 h-4" />
                 </button>
             </div>
         </motion.div>

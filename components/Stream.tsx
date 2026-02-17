@@ -123,12 +123,38 @@ export const Stream: React.FC<StreamProps> = ({
                 }
 
                 if (item.type === 'insight') {
+                  const getColor = (t: string) => {
+                    switch (t) {
+                      case 'correlation': return 'bg-purple-500';
+                      case 'pattern': return 'bg-blue-500';
+                      case 'milestone': return 'bg-amber-500';
+                      default: return 'bg-brand-teal';
+                    }
+                  };
+
                   return (
-                    <InsightCardComponent
-                      key={`insight-${item.data.id}`}
-                      insight={item.data}
-                      onDismiss={onDismissInsight}
-                    />
+                    <div key={`insight-${item.data.id}`} className="mb-4 relative group">
+                      {/* Dismiss Button (Absolute positioned) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDismissInsight(item.data.id);
+                        }}
+                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-white z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <span className="sr-only">Dismiss</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                      <InsightCardComponent
+                        title={item.data.title}
+                        insight={item.data.content}
+                        color={getColor(item.data.type)}
+                      >
+                        <div className="p-4 text-sm text-gray-400 italic bg-white/5 rounded-lg">
+                          Analysis Source: {Array.isArray(item.data.metadata?.tags) ? item.data.metadata?.tags.join(', ') : 'Mindstream AI'}
+                        </div>
+                      </InsightCardComponent>
+                    </div>
                   );
                 }
 

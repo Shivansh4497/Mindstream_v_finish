@@ -8,13 +8,18 @@ import * as db from '../services/dbService';
 import { Settings, Info } from 'lucide-react';
 
 interface HeaderProps {
-  onSearchClick: () => void;
+  onSearchClick?: () => void;
   onSettingsClick?: () => void;
   onInfoClick?: () => void;
   subtitle?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onSearchClick, onSettingsClick, onInfoClick, subtitle }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onSearchClick,
+  onSettingsClick,
+  onInfoClick,
+  subtitle
+}) => {
   const { profile, logout, user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 

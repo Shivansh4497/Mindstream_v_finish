@@ -7,13 +7,28 @@ export { verifyApiKey, GEMINI_API_KEY_AVAILABLE, getAiClient };
 // --- RAG HELPERS ---
 
 export const extractSearchKeywords = async (userQuery: string): Promise<string[]> => {
+    // 1. Try AI extraction first
     try {
+        // If query is very short, skip AI to save latency
+        if (userQuery.length < 15) throw new Error("Query too short for AI extraction");
+
         const result = await callAIProxy<{ keywords: string[] }>('extract-keywords', { query: userQuery });
-        return result.keywords || [];
+        if (result.keywords && result.keywords.length > 0) return result.keywords;
+        throw new Error("No keywords returned from AI");
     } catch (e) {
-        console.warn("Failed to extract keywords:", e);
-        return [];
+        console.warn("[RAG] extract-keywords failed/skipped, using local fallback:", e);
     }
+
+    // 2. Robust Local Fallback (Always runs if AI fails)
+    const stopWords = new Set(['the', 'is', 'at', 'which', 'on', 'in', 'a', 'an', 'and', 'or', 'to', 'of', 'my', 'i', 'me', 'what', 'about', 'did', 'say', 'tell', 'know', 'review']);
+    const keywords = userQuery
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopWords.has(w));
+
+    // Return unique keywords, max 4
+    return [...new Set(keywords)].slice(0, 4);
 };
 
 export const buildSystemContext = (context: UserContext): string => {
@@ -62,19 +77,20 @@ When referencing these, use phrases like:
     }
 
     if (context.searchResults && context.searchResults.length > 0) {
-        const historySummary = context.searchResults.map(e =>
-            `- [HISTORICAL] On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: "${e.text}"`
-        ).join('\n');
-        contextString += `RELEVANT PAST HISTORY (Use this to answer specific questions about the past):\n${historySummary}\n\n`;
+        const historySummary = context.searchResults.map(r => {
+            const date = new Date(r.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            if (r.type === 'entry') return `- [ENTRY] On ${date}: "${r.matchText}"`;
+            if (r.type === 'habit') return `- [HABIT] Created ${date}: ${r.matchText}`;
+            if (r.type === 'intention') return `- [GOAL] Set on ${date}: "${r.matchText}"`;
+            return '';
+        }).join('\n');
+        contextString += `RELEVANT PAST HISTORY (Entries, Habits, Goals):\n${historySummary}\n\n`;
     }
 
     contextString += `CONTEXT from my recent journal entries:\n${recentEntriesSummary || "No recent entries."}\n\n`;
     contextString += `CONTEXT from my active intentions/goals:\n${intentionsSummary || "No active goals."}\n\n`;
     contextString += `CONTEXT from my active habits:\n${habitsSummary || "No habits."}\n\n`;
-
-    if (context.latestReflection) {
-        contextString += `CONTEXT: My latest reflection was: "${context.latestReflection.summary}"\n\n`;
-    }
+    contextString += `CONTEXT: My latest reflection was: "${context.latestReflection?.summary || "None"}"\n\n`;
 
     // Balanced instruction: Use context only when semantically aligned
     contextString += `
@@ -305,12 +321,40 @@ You're valuable because you DON'T need to prove it every message.`;
         parts: [{ text: msg.text }],
     }));
 
-    // Call the AI proxy with chat action
-    const result = await callAIProxy<{ response: string }>('chat', {
-        history: chatHistory,
-        userPrompt,
-        systemInstruction
-    });
+    let result;
+    try {
+        // Call the AI proxy with chat action
+        result = await callAIProxy<{ response: string }>('chat', {
+            history: chatHistory,
+            userPrompt,
+            systemInstruction
+        });
+    } catch (e) {
+        console.error("[AI] Chat failed:", e);
+
+        // RAG FALLBACK: If AI fails but we have RAG data, construct a useful response
+        if (context.searchResults && context.searchResults.length > 0) {
+            const ragSummary = context.searchResults
+                .slice(0, 3)
+                .map(r => `• ${r.type.toUpperCase()}: ${r.matchText.substring(0, 100)}...`)
+                .join('\n');
+
+            result = {
+                response: `I'm having trouble connecting to my main processing unit right now. However, I found these relevant memories in your journal that might help:\n\n${ragSummary}\n\n(I'll be back online shortly to analyze this deeper!)`
+            };
+        } else {
+            // Generic fallback
+            result = { response: "I'm having trouble connecting right now. Please check your internet connection and try again in a moment." };
+        }
+    }
+
+    // TRUE RAG LOGGING (The User requested "The Truth")
+    // We enrich the metadata of the call we just made (or attempted) with the ACTUAL search results used.
+    // KEY CHANGE: We always pass the array, even if empty, so GlassBox knows we TRIED but found nothing.
+    if (context.searchResults) {
+        const { enrichLastAIMeta } = await import('./geminiClient');
+        enrichLastAIMeta({ rag_matches: context.searchResults });
+    }
 
     // Return an async generator that yields the response at once
     // This maintains compatibility with existing streaming code

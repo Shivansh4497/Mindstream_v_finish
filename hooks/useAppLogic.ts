@@ -11,6 +11,8 @@ import { calculateStreak } from '../utils/streak';
 const INITIAL_GREETING = "Hey! I'm here to help you reflect on what's on your mind. I can see your journal entries and help you spot patterns. What's going on today?";
 const PAGE_SIZE = 20;
 
+import { DemoLimitError } from '../services/geminiClient';
+
 export const useAppLogic = () => {
     const { user } = useAuth();
     const [entries, setEntries] = useState<Entry[]>([]);
@@ -43,6 +45,7 @@ export const useAppLogic = () => {
     const [isGeneratingReflection, setIsGeneratingReflection] = useState<string | null>(null);
     const [isAddingHabit, setIsAddingHabit] = useState(false);
     const [isChatLoading, setIsChatLoading] = useState(false);
+    const [showDemoLimitModal, setShowDemoLimitModal] = useState(false);
 
     // Pending insight for first-entry Quick Start users
     const [pendingInsight, setPendingInsight] = useState<{
@@ -78,6 +81,7 @@ export const useAppLogic = () => {
 
     useEffect(() => {
         const fetchDataAndVerifyAI = async () => {
+
             if (!user) return;
             try {
                 setAiStatus('verifying');
@@ -175,6 +179,7 @@ export const useAppLogic = () => {
     };
 
     const handleAddEntry = async (text: string, viaVoice: boolean = false) => {
+
         if (!user) return;
         const tempId = `temp-${Date.now()}`;
         const tempEntry: Entry = {
@@ -248,6 +253,7 @@ export const useAppLogic = () => {
 
     // ZERO-LATENCY DEBOUNCED HABIT TOGGLE WITH REF-BASED STATE
     const handleToggleHabit = async (habitId: string, dateString?: string) => {
+
         if (!user) return;
 
         const habit = habits.find(h => h.id === habitId);
@@ -340,6 +346,7 @@ export const useAppLogic = () => {
     };
 
     const handleEditHabit = async (habitId: string, name: string, emoji: string, category: HabitCategory) => {
+
         if (!user) return;
         try {
             const updated = await db.updateHabit(habitId, { name, emoji, category });
@@ -354,24 +361,30 @@ export const useAppLogic = () => {
     };
 
     const handleSendMessage = async (text: string, initialContext?: UserContext) => {
-        if (!user) return;
         const newUserMsg: Message = { sender: 'user', text };
         setMessages(prev => [...prev, newUserMsg]);
         setIsChatLoading(true);
 
         // Analytics: track chat message
-        db.logEvent(user.id, 'chat_message_sent', { word_count: text.split(' ').length });
+        if (user) {
+            db.logEvent(user.id, 'chat_message_sent', { word_count: text.split(' ').length });
+        }
 
         try {
-            const context = initialContext || await db.getUserContext(user.id);
+            // Get Context
+            let context = initialContext;
+            if (!context && user) {
+                context = await db.getUserContext(user.id);
+            }
 
             if (!isMounted.current) return;
 
-            if (aiStatus === 'ready' && !initialContext) {
+            // RAG: Extract keywords and search entries for context
+            if (aiStatus === 'ready' && !initialContext && context && user) {
                 try {
                     const keywords = await gemini.extractSearchKeywords(text);
                     if (keywords.length > 0) {
-                        const searchResults = await db.searchEntries(user.id, keywords);
+                        const searchResults = await db.searchUniversal(user.id, keywords);
                         context.searchResults = searchResults;
                     }
                 } catch (e) {
@@ -381,6 +394,7 @@ export const useAppLogic = () => {
 
             if (!isMounted.current) return;
 
+            // Call AI Service
             const stream = await gemini.getChatResponseStream([...messages, newUserMsg], context);
 
             let fullResponse = '';
@@ -400,7 +414,12 @@ export const useAppLogic = () => {
             }
         } catch (error) {
             if (isMounted.current) {
-                setMessages(prev => [...prev, { sender: 'ai', text: "I'm having trouble connecting right now." }]);
+                if (error instanceof DemoLimitError) {
+                    setShowDemoLimitModal(true);
+                    setMessages(prev => [...prev, { sender: 'ai', text: "You've used all your demo AI calls! Create a free account to keep exploring." }]);
+                } else {
+                    setMessages(prev => [...prev, { sender: 'ai', text: "I'm having trouble connecting right now." }]);
+                }
             }
         } finally {
             if (isMounted.current) setIsChatLoading(false);
@@ -408,6 +427,7 @@ export const useAppLogic = () => {
     };
 
     const handleAddHabit = async (n: string, f: HabitFrequency) => {
+
         if (!user) return;
         setIsAddingHabit(true);
         try {
@@ -430,6 +450,7 @@ export const useAppLogic = () => {
     };
 
     const handleAddIntention = async (text: string, dueDate: Date | null, isLifeGoal: boolean) => {
+
         if (!user) return;
 
         // Optimistic UI: Create temp intention and show immediately
@@ -608,7 +629,7 @@ export const useAppLogic = () => {
     };
 
     return {
-        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight, accountCreatedAt },
-        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight, setIntentions, refreshAllData }
+        state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight, accountCreatedAt, showDemoLimitModal },
+        actions: { handleAddEntry, handleToggleHabit, handleEditHabit, handleAddHabit, handleAddIntention, handleSendMessage, handleToggleIntention, handleToggleStar, handleDeleteIntention, handleDeleteHabit, handleEditEntry, handleDeleteEntry, handleAcceptSuggestion, handleDismissInsight, handleAcceptNudge, handleDismissNudge, setToast, setMessages, setIsGeneratingReflection, handleLoadMore, setReflections, setPendingInsight, setIntentions, refreshAllData, setIsChatLoading, setShowDemoLimitModal }
     };
 };

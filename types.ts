@@ -3,9 +3,16 @@
 export interface Profile {
   id: string;
   email: string;
+  full_name?: string;
   avatar_url?: string;
   created_at?: string;
+  updated_at?: string;
   ftue_completed?: boolean;
+  onboarding_completed?: boolean;
+  // Demo Mode V2
+  is_demo?: boolean;
+  demo_ai_calls_remaining?: number;
+  demo_created_at?: string;
 }
 
 export type GranularSentiment = 'Joyful' | 'Grateful' | 'Proud' | 'Hopeful' | 'Content' |
@@ -135,7 +142,7 @@ export interface UserContext {
   pendingIntentions: Intention[];
   activeHabits: Habit[];
   latestReflection: Reflection | null;
-  searchResults?: Entry[]; // RAG: Historical entries matching the current conversation
+  searchResults?: SearchResult[]; // RAG: Historical items matching the current conversation
   similarMoments?: SimilarMoment[]; // Phase 1: Past similar emotional moments
   personalityId?: string;
 }
@@ -151,4 +158,11 @@ export interface Nudge {
   status: 'pending' | 'accepted' | 'dismissed';
   created_at: string;
   acted_on_at?: string;
+}
+
+export interface SearchResult {
+  type: 'entry' | 'habit' | 'intention';
+  item: Entry | Habit | Intention;
+  matchText: string; // The text that matched (for highlighting)
+  timestamp: string; // Unified timestamp for sorting
 }

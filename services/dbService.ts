@@ -1,7 +1,7 @@
 
 import { supabase } from './supabaseClient';
 import { User } from '@supabase/supabase-js';
-import type { Profile, Entry, Reflection, Intention, IntentionTimeframe, IntentionStatus, GranularSentiment, Habit, HabitLog, HabitFrequency, HabitCategory, UserContext } from '../types';
+import type { Profile, Entry, Reflection, Intention, IntentionTimeframe, IntentionStatus, GranularSentiment, Habit, HabitLog, HabitFrequency, HabitCategory, UserContext, SearchResult } from '../types';
 import { getDateFromWeekId, getMonthId, getWeekId, getFormattedDate } from '../utils/date';
 import { calculateStreak } from '../utils/streak';
 
@@ -45,6 +45,13 @@ export const getAccountCreatedAt = async (userId: string): Promise<string | null
     }
 
     const profile = await getProfile(userId);
+
+    // For Demo users, we want to show ALL seeded history (backdated 30 days)
+    // So we return 'null' to skip the date filtering logic in getEntries/getIntentions
+    if (profile?.is_demo) {
+        return null;
+    }
+
     if (profile?.created_at) {
         accountCreatedAtCache.set(userId, profile.created_at);
         return profile.created_at;
@@ -110,58 +117,75 @@ export const resetAccountData = async (userId: string): Promise<boolean> => {
     }
 };
 
-export const createProfile = async (user: User): Promise<Profile | null> => {
+export const createProfile = async (user: User, isDemo: boolean = false): Promise<Profile | null> => {
     if (!supabase) throw new Error("Supabase client not initialized");
 
-    // 1. Check Metadata (The "Intentional Reset" Truth)
-    const lastResetAt = user.user_metadata?.last_reset_at;
-
-    // 2. Check Heritage (The "Glitch" Backup) - Find oldest entry
-    let oldestEntryTimestamp: string | null = null;
-    try {
-        const { data: oldestEntry } = await supabase
-            .from('entries')
-            .select('timestamp')
-            .eq('user_id', user.id)
-            .order('timestamp', { ascending: true })
-            .limit(1)
-            .single();
-        if (oldestEntry) oldestEntryTimestamp = oldestEntry.timestamp;
-    } catch (e) {
-        console.warn('Error checking heritage data:', e);
-    }
-
-    // 3. Decide Effective Creation Date
     let effectiveCreatedAt = new Date().toISOString();
 
-    if (lastResetAt) {
-        // CASE A: User explicitly deleted account previously. Respect that reset.
-        console.log('[Profile] Restoring from explicit reset point:', lastResetAt);
-        effectiveCreatedAt = lastResetAt;
-    } else if (oldestEntryTimestamp) {
-        // CASE B: No explicit reset, but data exists. Must be a glitch/recovery. Restore access.
-        // We set creation date to slightly before the oldest entry to ensure it's included.
-        console.log('[Profile] No reset found. Recovering heritage data from:', oldestEntryTimestamp);
-        effectiveCreatedAt = oldestEntryTimestamp;
+    if (!isDemo) {
+        // 1. Check Metadata (The "Intentional Reset" Truth)
+        const lastResetAt = user.user_metadata?.last_reset_at;
+
+        // 2. Check Heritage (The "Glitch" Backup) - Find oldest entry
+        let oldestEntryTimestamp: string | null = null;
+        try {
+            const { data: oldestEntry } = await supabase
+                .from('entries')
+                .select('timestamp')
+                .eq('user_id', user.id)
+                .order('timestamp', { ascending: true })
+                .limit(1)
+                .single();
+            if (oldestEntry) oldestEntryTimestamp = oldestEntry.timestamp;
+        } catch (e) {
+            console.warn('Error checking heritage data:', e);
+        }
+
+        // 3. Decide Effective Creation Date
+        if (lastResetAt) {
+            console.log('[Profile] Restoring from explicit reset point:', lastResetAt);
+            effectiveCreatedAt = lastResetAt;
+        } else if (oldestEntryTimestamp) {
+            console.log('[Profile] No reset found. Recovering heritage data from:', oldestEntryTimestamp);
+            effectiveCreatedAt = oldestEntryTimestamp;
+        } else {
+            console.log('[Profile] New user or clean slate. Setting created_at to NOW.');
+        }
     } else {
-        console.log('[Profile] New user or clean slate. Setting created_at to NOW.');
+        console.log('[Profile] 🧪 Creating demo profile.');
     }
+
+    // Build profile data
+    const profileData: any = {
+        id: user.id,
+        email: user.email || `demo_${user.id.slice(0, 8)}@mindstream.demo`,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        created_at: effectiveCreatedAt,
+    };
+
+    // Add demo-specific fields
+    if (isDemo) {
+        console.log('[dbService] createProfile: Setting is_demo=true for user', user.id);
+        profileData.is_demo = true;
+        profileData.demo_created_at = new Date().toISOString();
+        profileData.demo_ai_calls_remaining = 15;
+    }
+
+    console.log('[dbService] Upserting profile data:', profileData);
 
     // Use upsert to handle account recreation with same email (prevents 409 conflict)
     const { data, error } = await supabase
         .from('profiles')
-        .upsert({
-            id: user.id,
-            email: user.email,
-            avatar_url: user.user_metadata?.avatar_url || null,
-            created_at: effectiveCreatedAt
-        } as any, { onConflict: 'id' })
+        .upsert(profileData, { onConflict: 'id' })
         .select()
         .single();
+
     if (error) {
-        console.error('Error creating/updating profile:', error);
+        console.error('[dbService] Error creating/updating profile:', error);
         throw error;
     }
+
+    console.log('[dbService] Profile created/updated result:', data);
 
     // Clear cache to ensure app picks up new timestamp
     clearAccountCreatedAtCache(user.id);
@@ -406,6 +430,100 @@ export const searchEntries = async (userId: string, keywords: string[]): Promise
 };
 
 /**
+ * PHASE 13: MULTI-TABLE RAG
+ * Searches Entries, Habits, and Intentions for a unified retrieval context.
+ */
+export const searchUniversal = async (userId: string, keywords: string[]): Promise<SearchResult[]> => {
+    if (!supabase || !keywords || keywords.length === 0) return [];
+
+    const searchQuery = keywords.join(' or ');
+    const accountCreatedAt = await getAccountCreatedAt(userId);
+
+    // 1. Search Entries (Content)
+    let entryQuery = supabase
+        .from('entries')
+        .select('*')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .textSearch('text', searchQuery, { type: 'websearch', config: 'english' });
+
+    if (accountCreatedAt) entryQuery = entryQuery.gte('timestamp', accountCreatedAt);
+    const entryPromise = entryQuery.limit(5);
+
+    // 2. Search Habits (Name & Category)
+    // Supabase doesn't support OR across columns easily with textSearch, so we'll use ILIKE for simplicity on these small tables
+    // or we can use the 'or' filter string syntax: "name.ilike.%key%,category.ilike.%key%"
+    // Since keywords is an array, let's just search for the first few keywords to avoid complex OR logic complexity
+    // For a MVP RAG, let's just search matching Name OR Category for ANY of the keywords.
+    const keywordFilter = keywords.map(k => `name.ilike.%${k}%,category.ilike.%${k}%`).join(',');
+    let habitQuery = supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .or(keywordFilter);
+
+    if (accountCreatedAt) habitQuery = habitQuery.gte('created_at', accountCreatedAt);
+    const habitPromise = habitQuery.limit(5);
+
+    // 3. Search Intentions (Text)
+    const intentionFilter = keywords.map(k => `text.ilike.%${k}%`).join(',');
+    let intentionQuery = supabase
+        .from('intentions')
+        .select('*')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .or(intentionFilter);
+
+    if (accountCreatedAt) intentionQuery = intentionQuery.gte('created_at', accountCreatedAt);
+    const intentionPromise = intentionQuery.limit(5);
+
+    // Execute in parallel
+    const [entryRes, habitRes, intentionRes] = await Promise.all([entryPromise, habitPromise, intentionPromise]);
+
+    const results: SearchResult[] = [];
+
+    // Process Entries
+    if (entryRes.data) {
+        entryRes.data.forEach((e: Entry) => {
+            results.push({
+                type: 'entry',
+                item: e,
+                matchText: e.text,
+                timestamp: e.timestamp
+            });
+        });
+    }
+
+    // Process Habits
+    if (habitRes.data) {
+        habitRes.data.forEach((h: Habit) => {
+            results.push({
+                type: 'habit',
+                item: h,
+                matchText: `${h.name} (${h.category})`,
+                timestamp: h.created_at
+            });
+        });
+    }
+
+    // Process Intentions
+    if (intentionRes.data) {
+        intentionRes.data.forEach((i: Intention) => {
+            results.push({
+                type: 'intention',
+                item: i,
+                matchText: i.text,
+                timestamp: i.created_at
+            });
+        });
+    }
+
+    // Sort by timestamp descending (most recent first) as a proxy for relevance in this simple implementation
+    return results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10);
+};
+
+/**
  * PHASE 1: TEMPORAL MEMORY
  * Find emotionally similar past moments for contextual AI responses.
  * This enables "Last time you felt this way..." style AI responses.
@@ -641,6 +759,7 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });
+
     if (error) {
         console.error('Error fetching intentions:', error);
         return [];

@@ -10,12 +10,14 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isDemo: boolean;
   loginWithGoogle: () => Promise<void>;
+  loginAsDemo: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 // 2. Create the context with a default undefined value
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // 3. Create the provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -35,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // This effect runs once on mount to establish the initial session state and
     // then listens for subsequent changes.
-    
+
     // 1. Perform an explicit, one-time check for the session.
     const initializeSession = async () => {
       console.log('[AuthContext] Performing initial session check...');
@@ -44,8 +46,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('[AuthContext] getSession() complete.');
         // Only set if we haven't received an event update yet (though React batching handles this well)
         if (initialSession) {
-            setSession(initialSession);
-            setUser(initialSession.user);
+          setSession(initialSession);
+          setUser(initialSession.user);
         }
       } catch (error) {
         console.error('[AuthContext] Error in getSession():', error);
@@ -80,35 +82,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
   }, []);
-  
+
   // 3. Separate effect to handle profile fetching whenever the user changes.
   // This keeps concerns separate and the logic clean.
   useEffect(() => {
     // If there is a user, fetch their profile.
     if (user) {
       console.log(`[AuthContext] User detected (${user.id}). Fetching/creating profile...`);
+      const isAnonymous = user.is_anonymous === true;
+      if (isAnonymous) {
+        console.log('[AuthContext] 🧪 Anonymous demo user detected.');
+      }
+
       const manageProfile = async () => {
-          try {
-            let userProfile = await db.getProfile(user.id);
-            if (userProfile) {
-                setProfile(userProfile);
-                console.log('[AuthContext] Existing profile loaded.');
-            } else {
-                console.log('[AuthContext] No existing profile found. Creating new one...');
-                const newProfile = await db.createProfile(user);
-                if (newProfile) {
-                    setProfile(newProfile);
-                    console.log('[AuthContext] New profile created. Adding onboarding content...');
-                    // This is a new user, so add onboarding content.
-                    await db.addWelcomeEntry(user.id);
-                    await db.addFirstIntention(user.id);
-                    console.log('[AuthContext] Onboarding content added.');
-                }
-            }
-          } catch (error) {
-            console.error('[AuthContext] Error managing profile:', error);
-            setProfile(null);
+        try {
+          let userProfile = await db.getProfile(user.id);
+
+          // EDGE CASE: If a DB trigger automatically created the profile, it won't have is_demo=true.
+          // If we are anonymous but is_demo is missing/false, treat it as a new profile to force setup.
+          if (userProfile && isAnonymous && !userProfile.is_demo) {
+            console.log('[AuthContext] ⚠️ Anon user found with standard profile (DB Trigger?). Forcing demo setup...');
+            userProfile = null; // Detect as "new" to trigger createProfile + seeding
           }
+
+          if (userProfile) {
+            setProfile(userProfile);
+            console.log('[AuthContext] Existing profile loaded.');
+          } else {
+            console.log('[AuthContext] No existing profile found. Creating new one...');
+            const newProfile = await db.createProfile(user, isAnonymous);
+            if (newProfile) {
+              setProfile(newProfile);
+
+              if (isAnonymous) {
+                // Demo user: seed 30 days of data via Edge Function
+                console.log('[AuthContext] 🧪 Seeding demo data...');
+                try {
+                  const { data: seedData, error: seedErrorPayload } = await supabase!.functions.invoke('seed-demo-data', {
+                    body: { userId: user.id }
+                  });
+                  if (seedErrorPayload) throw seedErrorPayload;
+
+                  console.log('[AuthContext] 🧪 Demo data seeded successfully. Result:', JSON.stringify(seedData));
+                } catch (seedError) {
+                  console.error('[AuthContext] Failed to seed demo data:', seedError);
+                }
+              } else {
+                // Regular user: add onboarding content
+                console.log('[AuthContext] New profile created. Adding onboarding content...');
+                await db.addWelcomeEntry(user.id);
+                await db.addFirstIntention(user.id);
+                console.log('[AuthContext] Onboarding content added.');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[AuthContext] Error managing profile:', error);
+          setProfile(null);
+        }
       };
       manageProfile();
     } else {
@@ -134,6 +165,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error) console.error('[AuthContext] Error during Google login:', error.message);
   };
 
+  const loginAsDemo = async () => {
+    if (!supabase) {
+      console.error("[AuthContext] Supabase client not available. Cannot start demo.");
+      return;
+    }
+    console.log('[AuthContext] 🧪 Starting anonymous demo session...');
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      console.error('[AuthContext] Error during anonymous login:', error.message);
+    }
+    // The onAuthStateChange listener + profile creation hook handle the rest
+  };
+
   const logout = async () => {
     if (!supabase) {
       console.error("[AuthContext] Supabase client not available. Cannot log out.");
@@ -145,12 +189,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // The value provided to consuming components
+  const isDemo = profile?.is_demo === true;
+
   const value = {
     session,
     user,
     profile,
     loading,
+    isDemo,
     loginWithGoogle,
+    loginAsDemo,
     logout,
   };
 

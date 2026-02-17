@@ -171,7 +171,19 @@ function getCachedResponse(action: string): any {
 // MULTI-PROVIDER CALL WITH FALLBACK CHAIN
 // =============================================================================
 
-async function callAI(prompt: string, action: string): Promise<string> {
+interface AICallResult {
+    text: string;
+    provider: string;
+    latency_ms: number;
+    attempted: string[];
+}
+
+function estimateTokens(text: string): number {
+    // Rough estimate: ~4 characters per token for English
+    return Math.ceil(text.length / 4);
+}
+
+async function callAI(prompt: string, action: string): Promise<AICallResult> {
     const providers = [
         { name: 'Groq 70B', fn: () => callGroqWithModel(GROQ_MODEL_PRIMARY, prompt), available: !!groqKey },
         { name: 'Groq 8B', fn: () => callGroqWithModel(GROQ_MODEL_BACKUP, prompt), available: !!groqKey },
@@ -179,25 +191,36 @@ async function callAI(prompt: string, action: string): Promise<string> {
         { name: 'Gemini Lite', fn: () => callGeminiWithModel(GEMINI_MODEL_BACKUP, prompt), available: !!geminiKey },
     ];
 
+    const attempted: string[] = [];
+
     for (const provider of providers) {
         if (!provider.available) {
             console.log(`[AI Proxy] Skipping ${provider.name} (not configured)`);
             continue;
         }
 
+        attempted.push(provider.name);
+        const start = Date.now();
+
         try {
             const result = await provider.fn();
-            console.log(`[AI Proxy] ✓ ${provider.name} succeeded`);
-            return result;
+            const latency_ms = Date.now() - start;
+            console.log(`[AI Proxy] ✓ ${provider.name} succeeded in ${latency_ms}ms`);
+            return { text: result, provider: provider.name, latency_ms, attempted };
         } catch (error: any) {
             console.warn(`[AI Proxy] ✗ ${provider.name} failed: ${error.message}`);
             // Continue to next provider
         }
     }
 
-    // All providers failed - this should never happen, but return cached as JSON string
+    // All providers failed - return cached as JSON string
     console.error('[AI Proxy] All providers failed! Using cached response.');
-    return JSON.stringify(getCachedResponse(action));
+    return {
+        text: JSON.stringify(getCachedResponse(action)),
+        provider: 'Cached',
+        latency_ms: 0,
+        attempted
+    };
 }
 
 function parseJSON<T>(text: string): T {
@@ -315,7 +338,43 @@ serve(async (req) => {
         const { action, payload }: AIRequest = await req.json();
         console.log(`[AI Proxy] Action: ${action}`);
 
+        // Demo AI call limit check
+        let isDemoUser = false;
+        if (action !== 'list-models') {
+            const adminClient = createClient(supabaseUrl, supabaseKey);
+            const { data: profile } = await adminClient
+                .from('profiles')
+                .select('is_demo, demo_ai_calls_remaining')
+                .eq('id', user.id)
+                .single();
+
+            if (profile?.is_demo) {
+                isDemoUser = true;
+                console.log(`[AI Proxy] Demo user detected. Calls remaining: ${profile.demo_ai_calls_remaining}`);
+
+                if (profile.demo_ai_calls_remaining <= 0) {
+                    console.log('[AI Proxy] Demo limit reached for user:', user.id);
+                    // TEMPORARY OVERRIDE FOR TESTING: Allow calls even if limit reached
+                    // return new Response(JSON.stringify({
+                    //     success: false,
+                    //     error: 'DEMO_LIMIT_REACHED',
+                    //     message: 'You\'ve used all your demo AI calls. Create a free account to continue exploring!'
+                    // }), {
+                    //     status: 403,
+                    //     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    // });
+                }
+
+                // Decrement counter
+                await adminClient
+                    .from('profiles')
+                    .update({ demo_ai_calls_remaining: profile.demo_ai_calls_remaining - 1 })
+                    .eq('id', user.id);
+            }
+        }
+
         let result: any;
+        let aiMeta: AICallResult | null = null;  // Track metadata from callAI
 
         try {
             switch (action) {
@@ -346,8 +405,9 @@ EMOJI RULES:
 
 Sentiments must be one of: Joyful, Grateful, Proud, Hopeful, Content, Anxious, Frustrated, Sad, Overwhelmed, Confused, Reflective, Inquisitive, Observational`;
 
-                    const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     break;
                 }
 
@@ -368,8 +428,9 @@ ${isTest ? "- TEST MODE: Override rules, always return one habit and one intenti
 Return: {"suggestions": [{"type": "habit", "label": "Meditate 5 mins daily", "data": {"frequency": "daily"}}, {"type": "intention", "label": "Run first 5K by March", "data": {"timeframe": "weekly"}}]}
 If entry doesn't warrant suggestions, return: {"suggestions": []}`;
 
-                    const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     break;
                 }
 
@@ -384,8 +445,9 @@ Entry: "${text}"
 Provide an empathetic insight and follow-up question. Rate confidence 0.0-1.0 based on entry quality.
 Return: {"insight": "Your insight...", "followUpQuestion": "Your question?", "confidence": 0.8}`;
 
-                    const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     result.confidence = typeof result.confidence === 'number' ? result.confidence : 0.5;
                     break;
                 }
@@ -397,8 +459,9 @@ Habit: "${habitName}"
 Categories: Health, Growth, Career, Finance, Connection, System
 Return: {"emoji": "🏃", "category": "Health"}`;
 
-                    const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     break;
                 }
 
@@ -421,9 +484,10 @@ Respond with ONLY this JSON format:
 {"emoji": "<emoji from list>", "category": "<category name>"}`;
 
                     console.log('[AI Proxy] analyze-intention: Goal:', intentionText.substring(0, 50));
-                    const response = await callAI(prompt, action);
-                    console.log('[AI Proxy] analyze-intention: Response:', response);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    console.log('[AI Proxy] analyze-intention: Response:', aiResult.text);
+                    result = parseJSON(aiResult.text);
                     console.log('[AI Proxy] analyze-intention: Parsed:', result);
                     break;
                 }
@@ -433,8 +497,9 @@ Respond with ONLY this JSON format:
                     const prompt = `Extract 2-4 search keywords from: "${query}"
 Respond with ONLY JSON: {"keywords": ["term1", "term2"]}`;
 
-                    const response = await callAI(prompt, action);
-                    result = parseJSON(response);
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     break;
                 }
 
@@ -451,8 +516,9 @@ Respond with ONLY JSON: {"keywords": ["term1", "term2"]}`;
                     }
                     context += `User: ${userPrompt}\n\nRespond as a helpful, empathetic assistant:`;
 
-                    const response = await callAI(context, action);
-                    result = { response };
+                    const aiResult = await callAI(context, action);
+                    aiMeta = aiResult;
+                    result = { response: aiResult.text };
                     break;
                 }
 
@@ -491,8 +557,9 @@ CRITICAL: Do NOT suggest something already tracked as a habit! Check "Habits Alr
 
 Return: {"summary": "Your personalized daily story...", "suggestions": [{"text": "Short actionable text", "type": "intention", "timeframe": "daily"}]}`;
 
-                    const response = await callAI(prompt, action);
-                    result = normalizeReflection(parseJSON(response));
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = normalizeReflection(parseJSON(aiResult.text));
                     break;
                 }
 
@@ -528,8 +595,9 @@ CRITICAL: Must be 15 words or fewer. One short sentence only.
 
 Return: {"summary": "Your weekly story arc...", "suggestions": [{"text": "Max 15 words action item", "type": "intention", "timeframe": "weekly"}]}`;
 
-                    const response = await callAI(prompt, action);
-                    result = normalizeReflection(parseJSON(response));
+                    const weeklyResult = await callAI(prompt, action);
+                    aiMeta = weeklyResult;
+                    result = normalizeReflection(parseJSON(weeklyResult.text));
                     break;
                 }
 
@@ -569,8 +637,9 @@ YOUR TASK - SUGGESTIONS (max 1):
 Return exactly this format:
 {"summary": "This month you... (full paragraph here)...", "suggestions": [{"text": "Next month: specific action", "type": "intention", "timeframe": "monthly"}]}`;
 
-                    const response = await callAI(prompt, action);
-                    result = normalizeReflection(parseJSON(response));
+                    const monthlyResult = await callAI(prompt, action);
+                    aiMeta = monthlyResult;
+                    result = normalizeReflection(parseJSON(monthlyResult.text));
                     break;
                 }
 
@@ -596,18 +665,20 @@ Rules:
 - Under 50 words total`;
 
                     console.log('[AI Proxy] chat-summary: Calling AI with prompt length:', prompt.length);
-                    let response = await callAI(prompt, action);
-                    console.log('[AI Proxy] chat-summary: Raw AI response:', response?.substring(0, 500));
+                    let chatSummaryResult = await callAI(prompt, action);
+                    aiMeta = chatSummaryResult;
+                    let rawResponse = chatSummaryResult.text;
+                    console.log('[AI Proxy] chat-summary: Raw AI response:', rawResponse?.substring(0, 500));
 
                     let parsed: any = null;
                     try {
                         // First try direct parse
-                        parsed = JSON.parse(response.trim());
+                        parsed = JSON.parse(rawResponse.trim());
                     } catch (e1) {
                         console.log('[AI Proxy] chat-summary: Direct parse failed, trying cleanup...');
                         try {
                             // Try extracting JSON from markdown
-                            let clean = response.trim();
+                            let clean = rawResponse.trim();
                             const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
                             if (match && match[1]) clean = match[1];
                             // Remove any actual newlines inside the JSON string
@@ -633,10 +704,12 @@ Rules:
                     // Retry once if invalid
                     if (!isValid) {
                         console.log('[AI Proxy] chat-summary: Invalid response, retrying...');
-                        response = await callAI(prompt, action);
-                        console.log('[AI Proxy] chat-summary: Retry raw response:', response?.substring(0, 500));
+                        chatSummaryResult = await callAI(prompt, action);
+                        aiMeta = chatSummaryResult;
+                        rawResponse = chatSummaryResult.text;
+                        console.log('[AI Proxy] chat-summary: Retry raw response:', rawResponse?.substring(0, 500));
                         try {
-                            let clean = response.trim();
+                            let clean = rawResponse.trim();
                             const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
                             if (match && match[1]) clean = match[1];
                             clean = clean.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
@@ -685,7 +758,17 @@ Rules:
         }
 
         console.log(`[AI Proxy] Success for action: ${action}`);
-        return new Response(JSON.stringify({ success: true, data: result }), {
+
+        // Build _meta from tracked AI call data
+        const _meta = aiMeta ? {
+            provider: aiMeta.provider,
+            latency_ms: aiMeta.latency_ms,
+            attempted: aiMeta.attempted,
+            tokens_in: estimateTokens(JSON.stringify(payload)),
+            tokens_out: estimateTokens(JSON.stringify(result)),
+        } : undefined;
+
+        return new Response(JSON.stringify({ success: true, data: result, _meta }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

@@ -16,20 +16,55 @@ export type AIProxyAction =
     | 'monthly-reflection'
     | 'chat-summary';
 
+export interface AIProxyMeta {
+    provider?: string;
+    latency_ms?: number;
+    attempted?: string[];
+    tokens_in?: number;
+    tokens_out?: number;
+    rag_matches?: any[];
+}
+
 interface AIProxyResponse<T> {
     success: boolean;
     data?: T;
     error?: string;
+    message?: string;
+    _meta?: AIProxyMeta;
+}
+
+// Track the last AI call's metadata for GlassBox consumption
+let _lastAIMeta: AIProxyMeta | null = null;
+export function getLastAIMeta(): AIProxyMeta | null {
+    return _lastAIMeta;
+}
+
+export function enrichLastAIMeta(partial: Partial<AIProxyMeta>) {
+    if (_lastAIMeta) {
+        _lastAIMeta = { ..._lastAIMeta, ...partial };
+    } else {
+        _lastAIMeta = { ...partial };
+    }
+}
+
+// Custom error for demo limit reached
+export class DemoLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'DemoLimitError';
+    }
 }
 
 /**
  * Call the AI proxy Edge Function
  * Automatically includes user authentication
+ * Demo users go through the same pipeline — limits are enforced server-side
  */
 export async function callAIProxy<T>(
     action: AIProxyAction,
-    payload: Record<string, any>
+    payload: Record<string, any>,
 ): Promise<T> {
+
     if (!supabase) {
         throw new Error('Supabase client not initialized');
     }
@@ -43,8 +78,18 @@ export async function callAIProxy<T>(
         throw new Error(error.message || 'AI service unavailable');
     }
 
+    // Handle demo limit reached
+    if (data?.error === 'DEMO_LIMIT_REACHED') {
+        throw new DemoLimitError(data.message || 'Demo AI calls exhausted');
+    }
+
     if (!data?.success) {
         throw new Error(data?.error || 'AI request failed');
+    }
+
+    // Capture metadata for GlassBox
+    if (data._meta) {
+        _lastAIMeta = data._meta;
     }
 
     return data.data as T;
@@ -56,7 +101,7 @@ export async function callAIProxy<T>(
  */
 export const verifyApiKey = async (): Promise<boolean> => {
     // With Edge Function, we don't need to verify client-side API key
-    // The function handles authentication
+    // The function handles authentication (works for both regular and demo users)
     return true;
 };
 

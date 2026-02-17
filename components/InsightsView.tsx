@@ -28,6 +28,7 @@ interface InsightsViewProps {
 
     // Account info for progressive unlock
     accountCreatedAt?: string | null;
+
 }
 
 type InsightsTab = 'reflect' | 'deep_dive';
@@ -97,6 +98,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                 onDebug={onDebug}
                                 debugOutput={debugOutput}
                                 accountCreatedAt={accountCreatedAt || undefined}
+
                             />
                         </motion.div>
                     ) : (

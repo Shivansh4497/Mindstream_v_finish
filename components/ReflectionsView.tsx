@@ -133,6 +133,7 @@ export const ReflectionsView: React.FC<ReflectionsViewProps> = ({
   // Generate Daily Pulse (user-triggered, same SDK as Chat)
   const handleGeneratePulse = async () => {
     setIsGeneratingPulse(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');

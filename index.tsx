@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SUPABASE_CREDENTIALS_AVAILABLE } from './services/supabaseClient';
 import { GEMINI_API_KEY_AVAILABLE } from './services/geminiService';
 import { ConfigurationError } from './components/ConfigurationError';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 
 // Initialize Sentry for error monitoring
 // DSN should be set in environment variable VITE_SENTRY_DSN
@@ -34,7 +35,11 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-const isConfigured = SUPABASE_CREDENTIALS_AVAILABLE && GEMINI_API_KEY_AVAILABLE;
+// Check for Demo Mode (allows bypassing config check)
+const searchParams = new URLSearchParams(window.location.search);
+const isDemoMode = searchParams.get('demo') === 'true';
+
+const isConfigured = (SUPABASE_CREDENTIALS_AVAILABLE && GEMINI_API_KEY_AVAILABLE) || isDemoMode;
 
 if (!isConfigured) {
   const missingServices: string[] = [];
@@ -59,9 +64,11 @@ if (!isConfigured) {
 } else {
   root.render(
     <React.StrictMode>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <GlobalErrorBoundary>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </GlobalErrorBoundary>
     </React.StrictMode>
   );
 }

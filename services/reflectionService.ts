@@ -7,12 +7,13 @@ interface ReflectionResult {
 }
 
 // --- DAILY REFLECTION ---
+// --- DAILY REFLECTION ---
 export const generateReflection = async (
     entries: Entry[],
     intentions: Intention[],
     habits?: Habit[],
     habitLogs?: HabitLog[],
-    targetDate?: string  // Date for which to generate reflection (YYYY-MM-DD format)
+    targetDate?: string,  // Date for which to generate reflection (YYYY-MM-DD format)
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.primary_sentiment}: ${e.text}`
@@ -47,7 +48,7 @@ export const generateWeeklyReflection = async (
     intentions: Intention[],
     habits?: Habit[],
     habitLogs?: HabitLog[],
-    daysInPeriod: number = 7
+    daysInPeriod: number = 7,
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleDateString()}] ${e.primary_sentiment}: ${e.text}`
@@ -81,7 +82,7 @@ export const generateMonthlyReflection = async (
     intentions: Intention[],
     habits?: Habit[],
     habitLogs?: HabitLog[],
-    daysInPeriod: number = 30
+    daysInPeriod: number = 30,
 ): Promise<ReflectionResult> => {
     const entriesText = entries.map(e =>
         `[${new Date(e.timestamp).toLocaleDateString()}] ${e.primary_sentiment}: ${e.title}`

@@ -15,7 +15,7 @@ import { ChatView } from './components/ChatView';
 import { ChatInputBar } from './components/ChatInputBar';
 import { IntentionsView } from './components/IntentionsView';
 import { IntentionsInputBar } from './components/IntentionsInputBar';
-import { ReflectionsView } from './components/ReflectionsView';
+// reflections view unused?
 import { ThematicModal } from './components/ThematicModal';
 import { AIStatusBanner } from './components/AIStatusBanner';
 import { SuggestionChips } from './components/SuggestionChips';
@@ -27,7 +27,7 @@ import { EditIntentionModal } from './components/EditIntentionModal';
 import { HabitsView } from './components/HabitsView';
 import { HabitsInputBar } from './components/HabitsInputBar';
 import { SettingsView } from './components/SettingsView';
-import { LifeAreaDashboard } from './components/LifeAreaDashboard';
+// LifeAreaDashboard unused?
 import { InsightsView } from './components/InsightsView';
 import { YearlyReview } from './components/YearlyReview';
 import { InsightModal } from './components/InsightModal';
@@ -40,21 +40,34 @@ import { useAppLogic } from './hooks/useAppLogic';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFTUE, isFTUECompletedLocally } from './hooks/useFTUE';
 import { FTUETour } from './components/FTUETour';
-import * as gemini from './services/geminiService';
 import * as reflections from './services/reflectionService';
 import * as db from './services/dbService';
-import type { Entry, IntentionTimeframe, Habit, HabitFrequency, Intention } from './types';
+import type { Entry, Habit, HabitFrequency, Intention, Reflection } from './types';
+import { DemoLimitModal } from './components/DemoLimitModal';
+import { GlassBox, GlassBoxMeta } from './components/GlassBox';
+import { getLastAIMeta } from './services/geminiClient';
+import { useDemoMode } from './hooks/useDemoMode';
+import { Brain } from 'lucide-react';
 
-const LOADING_TIMEOUT_MS = 15000; // 15 seconds
-
-// Onboarding states: 0 = not started, 1 = quick start chosen, 5 = guided complete
+// Onboarding states
 const ONBOARDING_NOT_STARTED = 0;
 const ONBOARDING_QUICK_START = 1;
 const ONBOARDING_GUIDED_COMPLETE = 5;
 
+const LOADING_TIMEOUT_MS = 15000; // 15 seconds
+
 export const MindstreamApp: React.FC = () => {
     const { user } = useAuth();
+
+    // Demo Mode — GlassBox toggle only visible for demo users
+    const { isDemoMode, isEngineerViewOpen, toggleEngineerView } = useDemoMode();
+
+    // App Logic — same pipeline for regular and demo users
     const { state, actions } = useAppLogic();
+
+    // Glass Box metadata state
+    const [glassBoxMeta, setGlassBoxMeta] = useState<GlassBoxMeta | null>(null);
+
 
     const [view, setView] = useState<View>('stream');
     const [activeHabitFrequency, setActiveHabitFrequency] = useState<HabitFrequency>('daily');
@@ -75,11 +88,11 @@ export const MindstreamApp: React.FC = () => {
     const [yearlyReviewData, setYearlyReviewData] = useState<YearlyReviewData | null>(null);
     const [isGeneratingYearly, setIsGeneratingYearly] = useState(false);
 
-    // Loading timeout state - MUST be declared before any early returns
+
+    // Loading timeout state
     const [loadingTimedOut, setLoadingTimedOut] = useState(false);
 
     // Onboarding State
-    // 0 = not started (show Landing), 1 = quick start (go to app), 5 = guided complete
     const onboardingKey = user ? `onboardingStep_${user.id}` : 'onboardingStep';
     const [onboardingStep, setOnboardingStep] = useLocalStorage<number>(onboardingKey, ONBOARDING_NOT_STARTED);
     const [legacyPrivacy] = useLocalStorage('hasSeenPrivacy', false);
@@ -96,7 +109,19 @@ export const MindstreamApp: React.FC = () => {
     const realEntryCount = state.entries.filter(e => !e.id.startsWith('temp-')).length;
     const insightsUnlocked = realEntryCount >= 5;
 
-    // FTUE Tour - show after first entry for new users
+
+
+    // Update Glass Box when chat finishes loading
+    useEffect(() => {
+        if (!state.isChatLoading) {
+            const meta = getLastAIMeta();
+            if (meta) {
+                setGlassBoxMeta(meta);
+            }
+        }
+    }, [state.isChatLoading]);
+
+    // FTUE Tour
     const shouldShowFTUE = realEntryCount === 1 && !isFTUECompletedLocally();
     const ftue = useFTUE(shouldShowFTUE, async () => {
         if (user) {
@@ -104,7 +129,7 @@ export const MindstreamApp: React.FC = () => {
         }
     });
 
-    // Progressive unlock thresholds for reflections
+    // Progressive unlock thresholds
     const WEEKLY_UNLOCK = { days: 3, entries: 5 };
     const MONTHLY_UNLOCK = { days: 14, entries: 10 };
 
@@ -125,24 +150,21 @@ export const MindstreamApp: React.FC = () => {
         const createdAt = state.accountCreatedAt ? new Date(state.accountCreatedAt) : now;
         const daysSinceInstall = differenceInDays(now, createdAt);
 
-        // Daily: 5 entries (same as Insights tab unlock)
         const dailyUnlocked = realEntryCount >= 5;
-        // Weekly: 3 days + 5 entries
         const weeklyUnlocked = daysSinceInstall >= WEEKLY_UNLOCK.days && realEntryCount >= WEEKLY_UNLOCK.entries;
-        // Monthly: 14 days + 10 entries
         const monthlyUnlocked = daysSinceInstall >= MONTHLY_UNLOCK.days && realEntryCount >= MONTHLY_UNLOCK.entries;
 
         return { dailyUnlocked, weeklyUnlocked, monthlyUnlocked, daysSinceInstall };
     }, [state.accountCreatedAt, realEntryCount]);
 
-    // Legacy migration: users who already saw privacy screen skip onboarding
+    // Legacy migration
     useEffect(() => {
         if (legacyPrivacy && onboardingStep === ONBOARDING_NOT_STARTED) {
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
         }
     }, [legacyPrivacy, onboardingStep]);
 
-    // Loading timeout - shows retry button if loading takes too long
+    // Loading timeout
     useEffect(() => {
         if (!state.isDataLoaded) {
             const timeout = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
@@ -150,20 +172,15 @@ export const MindstreamApp: React.FC = () => {
         }
     }, [state.isDataLoaded]);
 
-    // Progressive disclosure: show toast when Insights tab unlocks
+    // Progressive disclosure toast
     useEffect(() => {
         if (insightsUnlocked && !hasVisitedInsights && user) {
-            // Only show toast once - when they first hit 5 entries
-            // The badge will persist until they visit the tab
             actions.setToast({ message: '🎉 Insights tab unlocked!', id: Date.now() });
             db.logEvent(user.id, 'insights_unlocked', {});
         }
     }, [insightsUnlocked]);
 
-    // NOTE: Removed instant insight generation for Quick Start users
-    // It was triggering on the welcome entry which is not useful
-
-    // Chat Starters - Using the new reflectionService
+    // Chat Starters
     useEffect(() => {
         if (view === 'chat' && state.messages.length === 1 && chatStarters.length === 0 && state.aiStatus === 'ready') {
             setIsGeneratingStarters(true);
@@ -174,66 +191,47 @@ export const MindstreamApp: React.FC = () => {
         }
     }, [view, state.messages, state.aiStatus]);
 
-    // Reflection unlock notifications - show modal when first unlocked
-    // IMPORTANT: Only run after user is loaded to ensure stable localStorage keys
+    // Reflection unlock notifications
     useEffect(() => {
-        // Wait for user and data to be fully loaded
         if (!user || !state.isDataLoaded) return;
-
-        // Don't show if already showing a modal
         if (pendingUnlockType !== null) return;
 
-        // Check daily unlock (5 entries = same as insights tab)
         if (unlockStatus.dailyUnlocked && !seenDailyUnlock) {
             setPendingUnlockType('daily');
             return;
         }
-
-        // Check weekly unlock (3 days + 5 entries)
         if (unlockStatus.weeklyUnlocked && !seenWeeklyUnlock) {
             setPendingUnlockType('weekly');
             return;
         }
-
-        // Check monthly unlock (14 days + 10 entries)
         if (unlockStatus.monthlyUnlocked && !seenMonthlyUnlock) {
             setPendingUnlockType('monthly');
             return;
         }
     }, [unlockStatus, seenDailyUnlock, seenWeeklyUnlock, seenMonthlyUnlock, state.isDataLoaded, user, pendingUnlockType]);
 
-    // Handle reflection unlock modal actions
+    // Handle reflection unlock actions
     const handleReflectionUnlockNavigate = () => {
         if (!pendingUnlockType) return;
-
-        // Mark as seen
         if (pendingUnlockType === 'daily') setSeenDailyUnlock(true);
         if (pendingUnlockType === 'weekly') setSeenWeeklyUnlock(true);
         if (pendingUnlockType === 'monthly') setSeenMonthlyUnlock(true);
-
-        // Navigate to insights view (which contains reflections)
         setView('insights');
-
-        // Log event
         if (user) {
             db.logEvent(user.id, 'reflection_generated', { type: pendingUnlockType, action: 'navigated_from_unlock' });
         }
-
         setPendingUnlockType(null);
     };
 
     const handleReflectionUnlockDismiss = () => {
         if (!pendingUnlockType) return;
-
-        // Mark as seen so it doesn't show again
         if (pendingUnlockType === 'daily') setSeenDailyUnlock(true);
         if (pendingUnlockType === 'weekly') setSeenWeeklyUnlock(true);
         if (pendingUnlockType === 'monthly') setSeenMonthlyUnlock(true);
-
         setPendingUnlockType(null);
     };
 
-    // Show Landing Screen for new users
+    // Show Landing Screen
     if (onboardingStep === ONBOARDING_NOT_STARTED && user) {
         return (
             <LandingScreen
@@ -242,35 +240,23 @@ export const MindstreamApp: React.FC = () => {
                     db.logEvent(user.id, 'onboarding_completed', { path: 'quick_start' });
                 }}
                 onGuidedSetup={async () => {
-                    // BULLETPROOF: Reset all user data on guided setup to ensure clean slate
-                    console.log('[Onboarding] Starting guided setup - resetting account data');
                     await db.resetAccountData(user.id);
-
-                    // Refresh all state to reflect the clean slate
                     await actions.refreshAllData();
-
-                    setOnboardingStep(2); // 2 = start guided wizard
+                    setOnboardingStep(2);
                 }}
             />
         );
     }
 
-    // Show Guided Onboarding Wizard (steps 2-4 go through wizard)
+    // Show Guided Onboarding Wizard
     if (onboardingStep >= 2 && onboardingStep < ONBOARDING_GUIDED_COMPLETE && user) {
         return <OnboardingWizard userId={user.id} onComplete={(dest, context, q) => {
-            console.log('[Onboarding] onComplete called:', { dest, context: context?.slice(0, 50), question: q?.slice(0, 50) });
             setOnboardingStep(ONBOARDING_GUIDED_COMPLETE);
             db.logEvent(user.id, 'onboarding_completed', { path: 'guided' });
-
             if (dest === 'chat' && context) {
-                console.log('[Onboarding] Going to Chat with context');
-                // Go to Chat with the user's elaboration as their first message
-                // The AI will respond naturally - no need to add extra messages
                 setView('chat');
                 actions.handleSendMessage(context);
             } else {
-                console.log('[Onboarding] Falling through to Stream. dest:', dest, 'context:', !!context, 'q:', !!q);
-                // Default to Stream for all other cases (including 'stream' destination or missing context)
                 setView('stream');
             }
         }} />;
@@ -296,268 +282,348 @@ export const MindstreamApp: React.FC = () => {
         );
     }
 
+
+    // Responsive Docking Logic
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches; // Simple check, ideally use a hook for reactivity but this works for render
+    const showDocked = isEngineerViewOpen && isDesktop;
+    const showModal = isEngineerViewOpen && !isDesktop;
+
     return (
         <ErrorBoundary>
-            <div className="flex flex-col h-[100dvh] bg-brand-indigo overflow-hidden">
+            <div className="flex flex-col h-[100dvh] bg-brand-indigo overflow-hidden transition-all duration-500 ease-in-out w-full">
+                {/* Header with Demo Toggle */}
                 <Header
                     onSearchClick={() => setShowSearchModal(true)}
                     onSettingsClick={() => setView('settings')}
                     onInfoClick={() => setShowInfoModal(true)}
                 />
+
                 <AIStatusBanner status={state.aiStatus} error={state.aiError} />
 
-                <main className="flex-grow overflow-hidden relative">
-                    <AnimatePresence mode="wait">
-                        {view === 'stream' && (
-                            <motion.div
-                                key="stream"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.5, ease: 'easeInOut' }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <div className="flex-grow overflow-y-auto">
-                                    <Stream
+                {/* Main Content Area (Flex container for split view) */}
+                <div className="flex-grow flex overflow-hidden relative">
+
+                    {/* App Views */}
+                    <main className={`flex-grow overflow-hidden relative transition-all duration-500 ${showDocked ? 'w-2/3' : 'w-full'}`}>
+                        <AnimatePresence mode="wait">
+                            {/* Stream View */}
+                            {view === 'stream' && (
+                                <motion.div
+                                    key="stream"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.5, ease: 'easeInOut' }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    <div className="flex-grow overflow-y-auto">
+                                        <Stream
+                                            entries={state.entries}
+                                            intentions={state.intentions}
+                                            insights={state.insights}
+                                            autoReflections={state.autoReflections}
+                                            nudges={state.nudges}
+                                            onTagClick={(tag) => { setSelectedTag(tag); setShowThematicModal(true); }}
+                                            onEditEntry={setEntryToEdit}
+                                            onDeleteEntry={setEntryToDelete}
+                                            onAcceptSuggestion={async (id, suggestion) => {
+                                                const type = await actions.handleAcceptSuggestion(id, suggestion);
+                                                if (type === 'reflection') setView('chat');
+                                            }}
+                                            onDismissInsight={actions.handleDismissInsight}
+                                            onAcceptNudge={actions.handleAcceptNudge}
+                                            onDismissNudge={actions.handleDismissNudge}
+                                            onLoadMore={actions.handleLoadMore}
+                                            hasMore={state.hasMore}
+                                            isLoadingMore={state.isLoadingMore}
+                                            isLoading={!state.isDataLoaded}
+                                        />
+                                    </div>
+                                    <InputBar onAddEntry={actions.handleAddEntry} />
+                                </motion.div>
+                            )}
+
+                            {/* Chat View */}
+                            {view === 'chat' && (
+                                <motion.div
+                                    key="chat"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    <ChatView
+                                        messages={state.messages}
+                                        isLoading={state.isChatLoading}
+                                        onAddSuggestion={() => { }}
+                                        userId={user?.id}
+                                        entryPoint={onboardingStep === ONBOARDING_QUICK_START ? 'quick_start' : onboardingStep === ONBOARDING_GUIDED_COMPLETE ? 'guided' : 'organic'}
+                                    />
+                                    <div className="p-4 bg-brand-indigo border-t border-white/5">
+                                        {/* GlassBox toggle for demo users */}
+                                        {isDemoMode && (
+                                            <div className="flex justify-end mb-2">
+                                                <button
+                                                    onClick={() => {
+                                                        // Merge real AI metadata with chat context
+                                                        const realMeta = getLastAIMeta();
+                                                        setGlassBoxMeta({
+                                                            action: 'chat',
+                                                            userMessage: state.messages.filter(m => m.sender === 'user').pop()?.text,
+                                                            provider: realMeta?.provider || 'Groq 70B',
+                                                            latency_ms: realMeta?.latency_ms,
+                                                            tokens_in: realMeta?.tokens_in,
+                                                            tokens_out: realMeta?.tokens_out,
+                                                            fallback_chain: realMeta?.attempted,
+                                                        });
+                                                        toggleEngineerView();
+                                                    }}
+                                                    className={`group flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 border ${isEngineerViewOpen
+                                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                                                        : 'bg-gradient-to-r from-emerald-900/40 to-teal-900/40 text-emerald-100 border-emerald-500/30 hover:border-emerald-400 hover:shadow-[0_0_20px_rgba(52,211,153,0.4)] hover:-translate-y-0.5'
+                                                        }`}
+                                                >
+                                                    <Brain className={`w-4 h-4 ${!isEngineerViewOpen && 'animate-pulse text-emerald-300'}`} />
+                                                    <span>{isEngineerViewOpen ? 'Close Glass Box' : 'Open Glass Box'}</span>
+                                                    <span className="text-[10px] font-normal opacity-70 ml-1 bg-emerald-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                        Demo
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        )}
+                                        <ChatInputBar
+                                            onSendMessage={actions.handleSendMessage}
+                                            isLoading={state.isChatLoading}
+                                        />
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* Habits View */}
+                            {view === 'habits' && (
+                                <motion.div
+                                    key="habits"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    <HabitsView
+                                        habits={state.habits}
+                                        todaysLogs={state.habitLogs}
+                                        onToggle={actions.handleToggleHabit}
+                                        onEdit={(habit) => setHabitToEdit(habit)}
+                                        onDelete={(habitId) => actions.handleDeleteHabit(habitId)}
+                                        activeFrequency={activeHabitFrequency}
+                                        onFrequencyChange={setActiveHabitFrequency}
+                                    />
+                                    <HabitsInputBar
+                                        onAddHabit={actions.handleAddHabit}
+                                        activeFrequency={activeHabitFrequency}
+                                        isLoading={state.isAddingHabit}
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* Intentions View */}
+                            {view === 'goals' && (
+                                <motion.div
+                                    key="intentions"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    <IntentionsView
+                                        intentions={state.intentions}
+                                        onToggleIntention={actions.handleToggleIntention}
+                                        onDeleteIntention={(id) => actions.handleDeleteIntention(id)}
+                                        onEditIntention={(intention) => setIntentionToEdit(intention)}
+                                        isLoading={!state.isDataLoaded}
+                                    />
+                                    <IntentionsInputBar onAddIntention={actions.handleAddIntention} />
+                                </motion.div>
+                            )}
+
+                            {/* Insights View */}
+                            {view === 'insights' && (
+                                <motion.div
+                                    key="insights"
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    <InsightsView
                                         entries={state.entries}
                                         intentions={state.intentions}
-                                        insights={state.insights}
-                                        autoReflections={state.autoReflections}
-                                        nudges={state.nudges}
-                                        onTagClick={(tag) => { setSelectedTag(tag); setShowThematicModal(true); }}
-                                        onEditEntry={setEntryToEdit}
-                                        onDeleteEntry={setEntryToDelete}
-                                        onAcceptSuggestion={async (id, suggestion) => {
-                                            const type = await actions.handleAcceptSuggestion(id, suggestion);
-                                            if (type === 'reflection') setView('chat');
+                                        reflections={state.reflections}
+                                        habits={state.habits}
+                                        habitLogs={state.habitLogs}
+                                        onGenerateDaily={async (date, dayEntries) => {
+                                            actions.setIsGeneratingReflection(date);
+                                            const targetDate = parseISO(date);
+                                            const dayIntentions = state.intentions.filter(i =>
+                                                i.status === 'pending' ||
+                                                (i.completed_at && isSameDay(parseISO(i.completed_at), targetDate))
+                                            );
+                                            const dayHabitLogs = state.habitLogs.filter(l =>
+                                                isSameDay(parseISO(l.completed_at), targetDate)
+                                            );
+
+                                            const res = await reflections.generateReflection(dayEntries, dayIntentions, state.habits, dayHabitLogs, date);
+
+                                            if (res) {
+                                                const newReflection: Reflection = {
+                                                    ...res,
+                                                    id: `reflection-${Date.now()}`,
+                                                    user_id: user!.id,
+                                                    type: 'daily',
+                                                    date: date,
+                                                    timestamp: new Date().toISOString(),
+                                                    auto_generated: true
+                                                };
+
+                                                const saved = await db.addReflection(user!.id, newReflection);
+                                                if (saved) {
+                                                    actions.setReflections(prev => [...prev.filter(r => !(r.date === date && r.type === 'daily')), saved]);
+                                                }
+                                            }
+                                            actions.setIsGeneratingReflection(null);
                                         }}
-                                        onDismissInsight={actions.handleDismissInsight}
-                                        onAcceptNudge={actions.handleAcceptNudge}
-                                        onDismissNudge={actions.handleDismissNudge}
-                                        onLoadMore={actions.handleLoadMore}
-                                        hasMore={state.hasMore}
-                                        isLoadingMore={state.isLoadingMore}
+                                        onGenerateWeekly={async (weekId, weekEntries) => {
+                                            actions.setIsGeneratingReflection(weekId);
+                                            const { getWeekDateRange, isWithinRange } = await import('./utils/date');
+                                            const weekRange = getWeekDateRange(weekId);
+                                            const weekIntentions = state.intentions.filter(i => {
+                                                const createdAt = new Date(i.created_at);
+                                                const completedAt = i.completed_at ? new Date(i.completed_at) : null;
+                                                return i.status === 'pending' || isWithinRange(createdAt, weekRange) || (completedAt && isWithinRange(completedAt, weekRange));
+                                            });
+                                            const weekHabitLogs = state.habitLogs.filter(l => isWithinRange(new Date(l.completed_at), weekRange));
+
+                                            const res = await reflections.generateWeeklyReflection(weekEntries, weekIntentions, state.habits, weekHabitLogs, 7);
+
+                                            if (res) {
+                                                const newReflection: Reflection = {
+                                                    ...res,
+                                                    id: `reflection-${Date.now()}`,
+                                                    user_id: user!.id,
+                                                    type: 'weekly',
+                                                    date: weekId,
+                                                    timestamp: new Date().toISOString(),
+                                                    auto_generated: true
+                                                };
+
+                                                const saved = await db.addReflection(user!.id, newReflection);
+                                                if (saved) {
+                                                    actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), saved]);
+                                                }
+                                            }
+                                            actions.setIsGeneratingReflection(null);
+                                        }}
+                                        onGenerateMonthly={async (monthId, monthEntries) => {
+                                            actions.setIsGeneratingReflection(monthId);
+                                            const { getMonthDateRange, isWithinRange } = await import('./utils/date');
+                                            const monthRange = getMonthDateRange(monthId);
+                                            const daysInMonth = Math.ceil((monthRange.end.getTime() - monthRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                                            const monthIntentions = state.intentions.filter(i => {
+                                                const createdAt = new Date(i.created_at);
+                                                const completedAt = i.completed_at ? new Date(i.completed_at) : null;
+                                                return i.status === 'pending' || isWithinRange(createdAt, monthRange) || (completedAt && isWithinRange(completedAt, monthRange));
+                                            });
+                                            const monthHabitLogs = state.habitLogs.filter(l => isWithinRange(new Date(l.completed_at), monthRange));
+
+                                            const res = await reflections.generateMonthlyReflection(monthEntries, monthIntentions, state.habits, monthHabitLogs, daysInMonth);
+
+                                            if (res) {
+                                                const newReflection: Reflection = {
+                                                    ...res,
+                                                    id: `reflection-${Date.now()}`,
+                                                    user_id: user!.id,
+                                                    type: 'monthly',
+                                                    date: monthId,
+                                                    timestamp: new Date().toISOString(),
+                                                    auto_generated: true
+                                                };
+
+                                                const saved = await db.addReflection(user!.id, newReflection);
+                                                if (saved) {
+                                                    actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), saved]);
+                                                }
+                                            }
+                                            actions.setIsGeneratingReflection(null);
+                                        }}
+
+                                        onExploreInChat={(summary) => {
+                                            setView('chat');
+                                            actions.handleSendMessage(`I'd like to explore this reflection: "${summary}"`);
+                                        }}
+                                        isGenerating={state.isGeneratingReflection}
+                                        onAddSuggestion={(s) => actions.handleAddIntention(s.text, null, false)}
+                                        aiStatus={state.aiStatus}
+                                        onDebug={() => { }}
+                                        debugOutput={null}
+                                        onOpenYearlyReview={async () => {
+                                            if (!user) return;
+                                            setIsGeneratingYearly(true);
+                                            try {
+                                                const data = await generateYearlyReview(user.id, new Date().getFullYear());
+                                                setYearlyReviewData(data);
+                                            } catch (e) {
+                                                console.error(e);
+                                                actions.setToast({ message: "Failed to generate yearly review", id: Date.now() });
+                                            } finally {
+                                                setIsGeneratingYearly(false);
+                                            }
+                                        }}
+                                        isGeneratingYearly={isGeneratingYearly}
+                                        accountCreatedAt={state.accountCreatedAt}
                                     />
-                                </div>
-                                <InputBar onAddEntry={actions.handleAddEntry} />
-                            </motion.div>
-                        )}
+                                </motion.div>
+                            )}
 
+                            {/* Settings View */}
+                            {view === 'settings' && (
+                                <motion.div
+                                    key="settings"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="absolute inset-0 overflow-y-auto z-30 bg-brand-indigo"
+                                >
+                                    <SettingsView onBack={() => setView('stream')} />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </main>
 
-                        {view === 'habits' && (
-                            <motion.div
-                                key="habits"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <HabitsView
-                                    habits={state.habits}
-                                    todaysLogs={state.habitLogs}
-                                    onToggle={actions.handleToggleHabit}
-                                    onEdit={setHabitToEdit}
-                                    onDelete={actions.handleDeleteHabit}
-                                    onAddHabit={(name, _emoji) => actions.handleAddHabit(name, activeHabitFrequency)}
-                                    activeFrequency={activeHabitFrequency}
-                                    onFrequencyChange={setActiveHabitFrequency}
-                                />
-                                <HabitsInputBar
-                                    onAddHabit={actions.handleAddHabit}
-                                    isLoading={state.isAddingHabit}
-                                    activeFrequency={activeHabitFrequency}
-                                />
-                            </motion.div>
-                        )}
+                    {/* DOCKED GLASS BOX (Desktop Only) */}
+                    {showDocked && (
+                        <div className="w-1/3 min-w-[320px] max-w-md hidden lg:block h-full relative z-20 shadow-2xl">
+                            <GlassBox
+                                isOpen={true}
+                                onClose={toggleEngineerView}
+                                meta={glassBoxMeta}
+                                isProcessing={state.isChatLoading}
+                                entries={state.entries}
+                                mode="docked"
+                            />
+                        </div>
+                    )}
+                </div>
 
-                        {view === 'goals' && (
-                            <motion.div
-                                key="goals"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <IntentionsView
-                                    intentions={state.intentions}
-                                    onToggle={actions.handleToggleIntention}
-                                    onDelete={actions.handleDeleteIntention}
-                                    onStarToggle={actions.handleToggleStar}
-                                    onEdit={setIntentionToEdit}
-                                    onAddIntention={(text) => actions.handleAddIntention(text, null, false)}
-                                />
-                                <IntentionsInputBar onAddIntention={actions.handleAddIntention} />
-                            </motion.div>
-                        )}
-
-
-                        {view === 'insights' && (
-                            <motion.div
-                                key="insights"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <InsightsView
-                                    // Reflections Props
-                                    entries={state.entries}
-                                    intentions={state.intentions}
-                                    reflections={state.reflections}
-                                    habits={state.habits}
-                                    habitLogs={state.habitLogs}
-                                    onGenerateDaily={async (date, dayEntries) => {
-                                        actions.setIsGeneratingReflection(date);
-
-                                        // Filter intentions: pending OR completed on this specific date
-                                        const targetDate = parseISO(date);
-                                        const dayIntentions = state.intentions.filter(i =>
-                                            i.status === 'pending' ||
-                                            (i.completed_at && isSameDay(parseISO(i.completed_at), targetDate))
-                                        );
-
-                                        // Filter habitLogs for this specific date only
-                                        const dayHabitLogs = state.habitLogs.filter(l =>
-                                            isSameDay(parseISO(l.completed_at), targetDate)
-                                        );
-
-                                        const res = await reflections.generateReflection(dayEntries, dayIntentions, state.habits, dayHabitLogs, date);
-                                        const saved = await db.addReflection(user!.id, { ...res, date, type: 'daily' });
-                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === date && r.type === 'daily')), saved]);
-                                        actions.setIsGeneratingReflection(null);
-                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'daily', date });
-                                    }}
-                                    onGenerateWeekly={async (weekId, weekEntries) => {
-                                        actions.setIsGeneratingReflection(weekId);
-
-                                        // Get week date range for filtering
-                                        const { getWeekDateRange, isWithinRange } = await import('./utils/date');
-                                        const weekRange = getWeekDateRange(weekId);
-
-                                        // Filter intentions: created or completed in this week
-                                        const weekIntentions = state.intentions.filter(i => {
-                                            const createdAt = new Date(i.created_at);
-                                            const completedAt = i.completed_at ? new Date(i.completed_at) : null;
-                                            return i.status === 'pending' ||
-                                                isWithinRange(createdAt, weekRange) ||
-                                                (completedAt && isWithinRange(completedAt, weekRange));
-                                        });
-
-                                        // Filter habitLogs for this week
-                                        const weekHabitLogs = state.habitLogs.filter(l =>
-                                            isWithinRange(new Date(l.completed_at), weekRange)
-                                        );
-
-                                        const res = await reflections.generateWeeklyReflection(weekEntries, weekIntentions, state.habits, weekHabitLogs, 7);
-                                        const saved = await db.addReflection(user!.id, { ...res, date: weekId, type: 'weekly' });
-                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === weekId && r.type === 'weekly')), saved]);
-                                        actions.setIsGeneratingReflection(null);
-                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'weekly', week_id: weekId });
-                                    }}
-                                    onGenerateMonthly={async (monthId, monthEntries) => {
-                                        actions.setIsGeneratingReflection(monthId);
-
-                                        // Get month date range for filtering
-                                        const { getMonthDateRange, isWithinRange } = await import('./utils/date');
-                                        const monthRange = getMonthDateRange(monthId);
-                                        const daysInMonth = Math.ceil((monthRange.end.getTime() - monthRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-                                        // Filter intentions: created or completed in this month
-                                        const monthIntentions = state.intentions.filter(i => {
-                                            const createdAt = new Date(i.created_at);
-                                            const completedAt = i.completed_at ? new Date(i.completed_at) : null;
-                                            return i.status === 'pending' ||
-                                                isWithinRange(createdAt, monthRange) ||
-                                                (completedAt && isWithinRange(completedAt, monthRange));
-                                        });
-
-                                        // Filter habitLogs for this month
-                                        const monthHabitLogs = state.habitLogs.filter(l =>
-                                            isWithinRange(new Date(l.completed_at), monthRange)
-                                        );
-
-                                        const res = await reflections.generateMonthlyReflection(monthEntries, monthIntentions, state.habits, monthHabitLogs, daysInMonth);
-                                        const saved = await db.addReflection(user!.id, { ...res, date: monthId, type: 'monthly' });
-                                        actions.setReflections(prev => [...prev.filter(r => !(r.date === monthId && r.type === 'monthly')), saved]);
-                                        actions.setIsGeneratingReflection(null);
-                                        if (user) db.logEvent(user.id, 'reflection_generated', { type: 'monthly', month_id: monthId });
-                                    }}
-                                    onExploreInChat={(summary) => {
-                                        setView('chat');
-                                        actions.handleSendMessage(`I'd like to explore this reflection: "${summary}"`);
-                                    }}
-                                    isGenerating={state.isGeneratingReflection}
-                                    onAddSuggestion={(s) => actions.handleAddIntention(s.text, null, false)}
-                                    aiStatus={state.aiStatus}
-                                    onDebug={() => reflections.getRawReflectionForDebug().then(res => actions.setToast({ message: "Debug check console", id: 1 }))}
-                                    debugOutput={null}
-                                    // Life Dashboard Props
-                                    onOpenYearlyReview={async () => {
-                                        if (!user) return;
-                                        setIsGeneratingYearly(true);
-                                        try {
-                                            const data = await generateYearlyReview(user.id, new Date().getFullYear());
-                                            setYearlyReviewData(data);
-                                        } catch (e) {
-                                            console.error(e);
-                                            actions.setToast({ message: "Failed to generate yearly review", id: Date.now() });
-                                        } finally {
-                                            setIsGeneratingYearly(false);
-                                        }
-                                    }}
-                                    isGeneratingYearly={isGeneratingYearly}
-                                    accountCreatedAt={state.accountCreatedAt}
-                                />
-                            </motion.div>
-                        )}
-
-                        {view === 'chat' && (
-                            <motion.div
-                                key="chat"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 20 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <ChatView
-                                    messages={state.messages}
-                                    isLoading={state.isChatLoading}
-                                    onAddSuggestion={() => { }}
-                                    userId={user?.id}
-                                    entryPoint={onboardingStep === ONBOARDING_QUICK_START ? 'quick_start' : onboardingStep === ONBOARDING_GUIDED_COMPLETE ? 'guided' : 'organic'}
-                                />
-                                {state.messages.length === 1 && <SuggestionChips starters={chatStarters} isLoading={isGeneratingStarters} onStarterClick={actions.handleSendMessage} />}
-                                <ChatInputBar onSendMessage={actions.handleSendMessage} isLoading={state.isChatLoading} />
-                            </motion.div>
-                        )}
-
-                        {view === 'settings' && (
-                            <motion.div
-                                key="settings"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="absolute inset-0 overflow-y-auto z-30 bg-brand-indigo"
-                            >
-                                <SettingsView onBack={() => setView('stream')} />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </main>
-
+                {/* NavBar */}
                 {view !== 'settings' && (
                     <NavBar
                         activeView={view}
                         onViewChange={(newView) => {
-                            // Clear Insights badge when user visits Insights tab
-                            if (newView === 'insights' && !hasVisitedInsights) {
-                                setHasVisitedInsights(true);
-                            }
+                            if (newView === 'insights' && !hasVisitedInsights) setHasVisitedInsights(true);
                             setView(newView);
                         }}
                         entryCount={realEntryCount}
@@ -611,7 +677,6 @@ export const MindstreamApp: React.FC = () => {
                             db.logEvent(user.id, 'insight_modal_action', { action: 'habit' });
                             if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'habit' });
                         }
-                        // The HabitsView has its own add flow - we could pre-fill but for now just navigate
                         if (state.pendingInsight?.suggestedHabit) {
                             actions.handleAddHabit(state.pendingInsight.suggestedHabit.name, 'daily');
                             actions.setToast({ message: `Added habit: ${state.pendingInsight.suggestedHabit.emoji} ${state.pendingInsight.suggestedHabit.name}`, id: Date.now() });
@@ -621,12 +686,11 @@ export const MindstreamApp: React.FC = () => {
                         const isFirstAction = !hasSeenFirstInsight;
                         setHasSeenFirstInsight(true);
                         actions.setPendingInsight(null);
-                        setView('intentions');
+                        setView('goals');
                         if (user) {
                             db.logEvent(user.id, 'insight_modal_action', { action: 'goal' });
                             if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'goal' });
                         }
-                        // Add the suggested intention
                         if (state.pendingInsight?.suggestedIntention) {
                             actions.handleAddIntention(state.pendingInsight.suggestedIntention, null, false);
                             actions.setToast({ message: 'Goal added!', id: Date.now() });
@@ -643,9 +707,7 @@ export const MindstreamApp: React.FC = () => {
                             db.logEvent(user.id, 'insight_modal_action', { action: 'chat' });
                             if (isFirstAction) db.logEvent(user.id, 'first_action_taken', { type: 'chat' });
                         }
-                        // Seed chat with the insight context and let user explore via follow-up
                         if (insight && followUp) {
-                            // First add the insight as AI message, then the follow-up as user's starting question
                             actions.setMessages(prev => [
                                 ...prev,
                                 { sender: 'ai', text: `"${insight}"\n\n${followUp}` }
@@ -680,6 +742,24 @@ export const MindstreamApp: React.FC = () => {
                     onComplete={ftue.completeTour}
                     onNavigate={(tab) => setView(tab)}
                 />
+
+                {/* DEMO LIMIT MODAL */}
+                <DemoLimitModal
+                    isOpen={state.showDemoLimitModal}
+                    onClose={() => actions.setShowDemoLimitModal(false)}
+                />
+
+                {/* MOBILE/TABLET GLASS BOX MODAL (Overlay) */}
+                {showModal && (
+                    <GlassBox
+                        isOpen={true}
+                        onClose={toggleEngineerView}
+                        meta={glassBoxMeta}
+                        isProcessing={state.isChatLoading}
+                        entries={state.entries}
+                        mode="modal"
+                    />
+                )}
             </div>
         </ErrorBoundary>
     );

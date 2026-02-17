@@ -318,7 +318,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   return (
     <>
-      <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Header with TTS and Sharing toggles */}
         <div className="flex-shrink-0 flex flex-col border-b border-white/5 bg-brand-indigo">
           <div className="flex justify-end gap-2 p-3">

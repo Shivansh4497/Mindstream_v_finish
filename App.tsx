@@ -13,7 +13,7 @@ const App: React.FC = () => {
       </div>
     );
   }
-  
+
   if (!session) {
     return <Login />;
   }
