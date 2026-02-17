@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isSeeding: boolean; // NEW
   isDemo: boolean;
   loginWithGoogle: () => Promise<void>;
   loginAsDemo: () => Promise<void>;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true); // Start as loading, will be set to false after the initial session check.
+  const [isSeeding, setIsSeeding] = useState(false); // NEW
 
   useEffect(() => {
     // Safety check: If supabase client failed to initialize (e.g. missing env vars),
@@ -117,6 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               if (isAnonymous) {
                 // Demo user: seed 30 days of data via Edge Function
                 console.log('[AuthContext] 🧪 Seeding demo data...');
+                setIsSeeding(true); // BLOCK UI
                 try {
                   const { data: seedData, error: seedErrorPayload } = await supabase!.functions.invoke('seed-demo-data', {
                     body: { userId: user.id }
@@ -126,6 +129,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   console.log('[AuthContext] 🧪 Demo data seeded successfully. Result:', JSON.stringify(seedData));
                 } catch (seedError) {
                   console.error('[AuthContext] Failed to seed demo data:', seedError);
+                } finally {
+                  setIsSeeding(false); // RELEASE UI
                 }
               } else {
                 // Regular user: add onboarding content
@@ -196,6 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     profile,
     loading,
+    isSeeding, // EXPOSE THIS
     isDemo,
     loginWithGoogle,
     loginAsDemo,

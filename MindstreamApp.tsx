@@ -57,7 +57,7 @@ const ONBOARDING_GUIDED_COMPLETE = 5;
 const LOADING_TIMEOUT_MS = 15000; // 15 seconds
 
 export const MindstreamApp: React.FC = () => {
-    const { user } = useAuth();
+    const { user, isSeeding } = useAuth();
 
     // Demo Mode — GlassBox toggle only visible for demo users
     const { isDemoMode, isEngineerViewOpen, toggleEngineerView } = useDemoMode();
@@ -262,11 +262,17 @@ export const MindstreamApp: React.FC = () => {
         }} />;
     }
 
-    if (!state.isDataLoaded) {
+    if (!state.isDataLoaded || user && isSeeding) {
         return (
             <div className="h-screen w-screen bg-brand-indigo flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 border-4 border-brand-teal border-t-transparent rounded-full animate-spin"></div>
-                {loadingTimedOut && (
+                {isSeeding && (
+                    <div className="text-center mt-4 animate-pulse">
+                        <p className="text-brand-teal font-medium mb-1">Preparing Demo Environment...</p>
+                        <p className="text-brand-slate text-sm">Seeding journal entries & habits</p>
+                    </div>
+                )}
+                {loadingTimedOut && !isSeeding && (
                     <div className="text-center mt-4">
                         <p className="text-gray-400 mb-3">Taking longer than expected...</p>
                         <button
