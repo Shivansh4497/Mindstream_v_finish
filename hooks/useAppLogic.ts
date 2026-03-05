@@ -14,7 +14,7 @@ const PAGE_SIZE = 20;
 import { DemoLimitError } from '../services/geminiClient';
 
 export const useAppLogic = () => {
-    const { user } = useAuth();
+    const { user, isSeeding } = useAuth();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [reflections, setReflections] = useState<Reflection[]>([]);
     const [intentions, setIntentions] = useState<Intention[]>([]);
@@ -139,6 +139,8 @@ export const useAppLogic = () => {
         };
         fetchDataAndVerifyAI();
     }, [user]);
+
+
 
     // Check for Nudges
     useEffect(() => {
@@ -627,6 +629,18 @@ export const useAppLogic = () => {
             console.error('[refreshAllData] Error reloading data:', error);
         }
     };
+
+    // Refetch data when demo seeding completes
+    const wasSeeding = useRef(false);
+    useEffect(() => {
+        if (isSeeding) {
+            wasSeeding.current = true;
+        } else if (!isSeeding && wasSeeding.current) {
+            wasSeeding.current = false;
+            console.log('[useAppLogic] Seeding complete detected, refreshing data...');
+            refreshAllData();
+        }
+    }, [isSeeding]);
 
     return {
         state: { entries, reflections, intentions, habits, habitLogs, insights, nudges, autoReflections, messages, isDataLoaded, aiStatus, aiError, toast, isGeneratingReflection, isAddingHabit, isChatLoading, hasMore, isLoadingMore, pendingInsight, accountCreatedAt, showDemoLimitModal },

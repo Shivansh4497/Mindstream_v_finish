@@ -329,8 +329,13 @@ You're valuable because you DON'T need to prove it every message.`;
             userPrompt,
             systemInstruction
         });
-    } catch (e) {
+    } catch (e: any) {
         console.error("[AI] Chat failed:", e);
+
+        // Do NOT swallow DemoLimitError - rethrow to trigger the UI modal
+        if (e && e.name === 'DemoLimitError') {
+            throw e;
+        }
 
         // RAG FALLBACK: If AI fails but we have RAG data, construct a useful response
         if (context.searchResults && context.searchResults.length > 0) {

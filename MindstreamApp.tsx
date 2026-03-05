@@ -116,7 +116,12 @@ export const MindstreamApp: React.FC = () => {
         if (!state.isChatLoading) {
             const meta = getLastAIMeta();
             if (meta) {
-                setGlassBoxMeta(meta);
+                setGlassBoxMeta({
+                    ...meta,
+                    action: 'chat',
+                    userMessage: state.messages.filter(m => m.sender === 'user').pop()?.text,
+                    fallback_chain: meta.attempted,
+                });
             }
         }
     }, [state.isChatLoading]);
@@ -375,12 +380,10 @@ export const MindstreamApp: React.FC = () => {
                                                         // Merge real AI metadata with chat context
                                                         const realMeta = getLastAIMeta();
                                                         setGlassBoxMeta({
+                                                            ...realMeta,
                                                             action: 'chat',
                                                             userMessage: state.messages.filter(m => m.sender === 'user').pop()?.text,
                                                             provider: realMeta?.provider || 'Groq 70B',
-                                                            latency_ms: realMeta?.latency_ms,
-                                                            tokens_in: realMeta?.tokens_in,
-                                                            tokens_out: realMeta?.tokens_out,
                                                             fallback_chain: realMeta?.attempted,
                                                         });
                                                         toggleEngineerView();

@@ -16,6 +16,7 @@ export interface GlassBoxMeta {
     tokens_in?: number;
     tokens_out?: number;
     rag_chunks?: number;
+    rag_matches?: any[];
     prompt_length?: number;
     fallback_chain?: string[];
     action?: string;
