@@ -189,6 +189,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     console.log('[AuthContext] Initiating logout...');
+    if (user) {
+      db.clearAccountCreatedAtCache(user.id);
+    }
     const { error } = await supabase.auth.signOut();
     if (error) console.error('[AuthContext] Error during logout:', error);
   };

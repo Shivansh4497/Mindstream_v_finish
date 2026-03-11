@@ -277,7 +277,16 @@ export const useAppLogic = () => {
         const habit = habits.find(h => h.id === habitId);
         if (!habit) return;
 
-        const targetDate = dateString ? new Date(dateString) : new Date();
+        // C6 Timezone Fix: Parse YYYY-MM-DD correctly in local time
+        let targetDate = new Date();
+        if (dateString) {
+            if (dateString.length === 10) {
+                const [y, m, d] = dateString.split('-').map(Number);
+                targetDate = new Date(y, m - 1, d);
+            } else {
+                targetDate = new Date(dateString);
+            }
+        }
 
         // 1. Determine State using REF (Synchronous Source of Truth)
         // We must use the Ref because rapid clicks might happen before State updates,
@@ -416,7 +425,7 @@ export const useAppLogic = () => {
             const stream = await gemini.getChatResponseStream([...messages, newUserMsg], context);
 
             let fullResponse = '';
-            setMessages(prev => [...prev, { sender: 'ai', text: '' }]);
+            setMessages(prev => [...prev, { sender: 'ai', text: '', id: 'temp-ai-bubble' }]);
 
             for await (const chunk of stream) {
                 if (!isMounted.current) break;
@@ -425,13 +434,36 @@ export const useAppLogic = () => {
                     fullResponse += chunkText;
                     setMessages(prev => {
                         const newHistory = [...prev];
-                        newHistory[newHistory.length - 1].text = fullResponse;
+                        // Robustly find the AI bubble rather than assuming it's the absolute last message
+                        // (prevents desync if user clicks send twice rapidly)
+                        let bubbleIndex = -1;
+                        for (let i = newHistory.length - 1; i >= 0; i--) {
+                            const m = newHistory[i];
+                            if (m.id === 'temp-ai-bubble' || (m.sender === 'ai' && m.text === fullResponse.substring(0, fullResponse.length - chunkText.length))) {
+                                bubbleIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (bubbleIndex !== -1) {
+                            newHistory[bubbleIndex] = { ...newHistory[bubbleIndex], text: fullResponse };
+                            // Remove temp ID once streaming starts
+                            if (newHistory[bubbleIndex].id === 'temp-ai-bubble') {
+                                delete newHistory[bubbleIndex].id;
+                            }
+                        } else {
+                            // Fallback if bubble lost
+                            newHistory[newHistory.length - 1].text = fullResponse;
+                        }
                         return newHistory;
                     });
                 }
             }
         } catch (error) {
             if (isMounted.current) {
+                // Remove empty loading bubble on error
+                setMessages(prev => prev.filter(m => m.id !== 'temp-ai-bubble' && !(m.sender === 'ai' && m.text === '')));
+
                 if (error instanceof DemoLimitError) {
                     setShowDemoLimitModal(true);
                     setMessages(prev => [...prev, { sender: 'ai', text: "You've used all your demo AI calls! Create a free account to keep exploring." }]);
@@ -471,13 +503,21 @@ export const useAppLogic = () => {
 
         if (!user) return;
 
+        // C6 Timezone Fix: Format as local date string (YYYY-MM-DD) to avoid UTC boundary crossing issues
+        const formatLocalDate = (date: Date): string => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
         // Optimistic UI: Create temp intention and show immediately
         const tempId = `temp-${Date.now()}`;
         const tempIntention: Intention = {
             id: tempId,
             user_id: user.id,
             text,
-            due_date: dueDate ? dueDate.toISOString().split('T')[0] : null,
+            due_date: dueDate ? formatLocalDate(dueDate) : null,
             is_life_goal: isLifeGoal,
             is_starred: false,
             status: 'pending' as const,

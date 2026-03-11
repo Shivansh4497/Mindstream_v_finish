@@ -1,6 +1,5 @@
 import type { Entry, Message, HabitCategory, InstantInsight, EntrySuggestion, UserContext } from '../types';
 import { callAIProxy, verifyApiKey, parseGeminiJson, GEMINI_API_KEY_AVAILABLE, getAiClient } from './geminiClient';
-import { getPersonality, DEFAULT_PERSONALITY, PersonalityId } from '../config/personalities';
 
 export { verifyApiKey, GEMINI_API_KEY_AVAILABLE, getAiClient };
 
@@ -36,7 +35,9 @@ export const buildSystemContext = (context: UserContext): string => {
     const recentEntriesSummary = context.recentEntries
         .slice(0, 10) // Limit to 10 most recent
         .map(e => {
-            const truncatedText = e.text.length > 300 ? e.text.slice(0, 300) + '...' : e.text;
+            // AIS1 Fix: Sanitize user input to prevent prompt injection escaping
+            const sanitizedText = e.text.replace(/\[/g, '(').replace(/\]/g, ')').replace(/```/g, "'''");
+            const truncatedText = sanitizedText.length > 300 ? sanitizedText.slice(0, 300) + '...' : sanitizedText;
             return `- On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, feeling ${e.primary_sentiment}, I wrote: "${truncatedText}"`;
         })
         .join('\n');
@@ -134,8 +135,6 @@ If in doubt, just listen.
 
 export const getChatResponseStream = async (history: Message[], context: UserContext) => {
     const contextPrompt = buildSystemContext(context);
-    const personalityId = (context.personalityId as PersonalityId) || DEFAULT_PERSONALITY;
-    const personality = getPersonality(personalityId) || getPersonality(DEFAULT_PERSONALITY);
 
     // Check if temporal memory is available
     const hasTemporalMemory = context.similarMoments && context.similarMoments.length > 0;
@@ -152,7 +151,10 @@ export const getChatResponseStream = async (history: Message[], context: UserCon
     if (hasActiveHabits) personalizedRefs.push(`Habits: "${context.activeHabits[0]?.name}"`);
     if (hasTemporalMemory) personalizedRefs.push(`Past moments available`);
 
-    const systemInstruction = `${personality.systemPrompt}
+    // Hardcoded Stoic / Neutral Default Prompt (Personality system deleted)
+    const systemInstruction = `You are Mindstream, an introspective journaling assistant. Your tone is calm, neutral, stoic, and slightly philosophical. 
+You guide the user to their own realizations without giving unsolicited advice. 
+You focus on patterns, facts, and their actual words, stripped of dramatic emotional amplification.
 
 === MINDSTREAM CHAT ===
 

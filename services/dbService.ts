@@ -668,7 +668,8 @@ export const getReflections = async (userId: string): Promise<Reflection[]> => {
         query = query.gte('timestamp', accountCreatedAt);
     }
 
-    const { data, error } = await query.order('timestamp', { ascending: false });
+    // Limit to prevent over-fetching all history on mount (P4 fix)
+    const { data, error } = await query.order('timestamp', { ascending: false }).limit(50);
 
     if (error) {
         console.error('Error fetching reflections:', error);
@@ -740,7 +741,8 @@ export const addReflection = async (userId: string, reflectionData: Omit<Reflect
     return { ...data, date: originalDate } as Reflection;
 };
 
-// Intention Functions
+
+
 export const getIntentions = async (userId: string): Promise<Intention[]> => {
     if (!supabase) return [];
 
@@ -758,7 +760,8 @@ export const getIntentions = async (userId: string): Promise<Intention[]> => {
         query = query.gte('created_at', accountCreatedAt);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // Limit to prevent over-fetching all history on mount (P4 fix)
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
 
     if (error) {
         console.error('Error fetching intentions:', error);
@@ -916,7 +919,8 @@ export const getHabits = async (userId: string): Promise<Habit[]> => {
         query = query.gte('created_at', accountCreatedAt);
     }
 
-    const { data: habitsData, error } = await query.order('created_at', { ascending: true });
+    // Limit to active habits to prevent massive payload over fetch
+    const { data: habitsData, error } = await query.order('created_at', { ascending: true }).limit(50);
 
     if (error) return [];
 
@@ -1065,7 +1069,16 @@ export const syncHabitCompletion = async (
 ): Promise<{ updatedHabit: Habit }> => {
     if (!supabase) throw new Error("Supabase not initialized");
 
-    const targetDate = dateString ? new Date(dateString) : new Date();
+    // C6 Timezone Fix: Parse YYYY-MM-DD safely into local timezone
+    let targetDate = new Date();
+    if (dateString) {
+        if (dateString.length === 10) {
+            const [y, m, d] = dateString.split('-').map(Number);
+            targetDate = new Date(y, m - 1, d);
+        } else {
+            targetDate = new Date(dateString);
+        }
+    }
     const targetIso = targetDate.toISOString();
 
     // 1. Determine the "period identifier" to prevent duplicates.
@@ -1320,12 +1333,11 @@ export const updateUserFlags = async (userId: string, flags: Partial<UserFlags>)
 export const getUserContext = async (userId: string): Promise<UserContext> => {
     if (!supabase) throw new Error("Supabase not initialized");
 
-    const [entries, intentions, habits, reflections, personalityId] = await Promise.all([
+    const [entries, intentions, habits, reflections] = await Promise.all([
         getEntries(userId, 0, 15),
         getIntentions(userId),
         getHabits(userId),
-        getReflections(userId),
-        getUserPersonality(userId)
+        getReflections(userId)
     ]);
 
     // Filter out system/welcome entries from context (they shouldn't be used as user input)
@@ -1350,8 +1362,7 @@ export const getUserContext = async (userId: string): Promise<UserContext> => {
         pendingIntentions: intentions.filter(i => i.status === 'pending'),
         activeHabits: habits,
         latestReflection: reflections.length > 0 ? reflections[0] : null,
-        similarMoments: similarMoments.length > 0 ? similarMoments : undefined,
-        personalityId
+        similarMoments: similarMoments.length > 0 ? similarMoments : undefined
     };
 }
 

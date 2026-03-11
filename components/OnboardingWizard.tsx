@@ -8,7 +8,6 @@ import { FloatingBubbles } from './FloatingBubbles';
 import * as gemini from '../services/geminiService';
 import * as db from '../services/dbService';
 import type { InstantInsight } from '../types';
-import { PersonalitySelector } from './PersonalitySelector';
 import { generateOnboardingSuggestions, OnboardingSuggestion } from '../services/onboardingSuggestions';
 import { OnboardingSuggestionCard } from './OnboardingSuggestionCard';
 
@@ -17,7 +16,7 @@ interface OnboardingWizardProps {
   onComplete: (destination: 'stream' | 'chat', initialContext?: string, aiQuestion?: string) => void;
 }
 
-type Step = 'splash' | 'sanctuary' | 'personality' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'awe';
+type Step = 'splash' | 'sanctuary' | 'spark' | 'container' | 'friction' | 'elaboration' | 'processing' | 'awe';
 type Sentiment = 'Anxious' | 'Excited' | 'Overwhelmed' | 'Calm' | 'Tired' | 'Inspired' | 'Frustrated' | 'Grateful';
 type LifeArea = 'Work' | 'Relationships' | 'Health' | 'Self' | 'Finance';
 
@@ -616,12 +615,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userId, onCo
         </div>
       )}
 
-      {/* Step 1.5: Personality */}
-      {step === 'personality' && (
-        <div className="w-full max-w-6xl px-6 animate-fade-in relative z-10 h-full overflow-y-auto py-10 flex items-center justify-center">
-          <PersonalitySelector onSelect={() => setStep('spark')} />
-        </div>
-      )}
+
 
       {/* Step 2: Spark */}
       {step === 'spark' && (

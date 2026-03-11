@@ -145,7 +145,6 @@ export interface UserContext {
   latestReflection: Reflection | null;
   searchResults?: SearchResult[]; // RAG: Historical items matching the current conversation
   similarMoments?: SimilarMoment[]; // Phase 1: Past similar emotional moments
-  personalityId?: string;
 }
 
 export type AIStatus = 'initializing' | 'verifying' | 'ready' | 'error';

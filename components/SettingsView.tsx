@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Download, FileJson, FileText, Loader2, Bug, FlaskConical, Trash2 } from 'lucide-react';
-import { PersonalitySelector } from './PersonalitySelector';
 import { supabase } from '../services/supabaseClient';
 import { fetchAllUserData, downloadData } from '../services/dataExportService';
 import { getChatFeedbackCount, deleteUserChatFeedback, logEvent } from '../services/dbService';
@@ -91,15 +90,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
                 </div>
 
                 <div className="space-y-12">
-                    <section>
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-brand-teal mb-2">Mindstream Companion</h2>
-                            <p className="text-gray-400">Choose the personality that best fits your thinking style.</p>
-                        </div>
-
-                        <PersonalitySelector />
-                    </section>
-
                     <section>
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-brand-teal mb-2">Data & Privacy</h2>
