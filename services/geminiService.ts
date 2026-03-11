@@ -35,12 +35,22 @@ export const buildSystemContext = (context: UserContext): string => {
     // Optimize Context Window: Limit tokens by slicing arrays
     const recentEntriesSummary = context.recentEntries
         .slice(0, 10) // Limit to 10 most recent
-        .map(e => `- On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, feeling ${e.primary_sentiment}, I wrote: "${e.text}"`)
+        .map(e => {
+            const truncatedText = e.text.length > 300 ? e.text.slice(0, 300) + '...' : e.text;
+            return `- On ${new Date(e.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, feeling ${e.primary_sentiment}, I wrote: "${truncatedText}"`;
+        })
         .join('\n');
 
     const intentionsSummary = context.pendingIntentions
         .slice(0, 10) // Limit to top 10
-        .map(i => `- My [${i.timeframe}] goal is: "${i.text}"`)
+        .map(i => {
+            const deadline = i.is_life_goal
+                ? 'life goal'
+                : i.due_date
+                    ? `due ${i.due_date}`
+                    : 'no deadline';
+            return `- My goal (${deadline}): "${i.text}"`;
+        })
         .join('\n');
 
     const habitsSummary = context.activeHabits

@@ -9,8 +9,9 @@ export interface DetectedPattern {
     context?: any;
 }
 
-const NEGATIVE_MOODS = ['anxious', 'stressed', 'sad', 'overwhelmed', 'tired', 'frustrated', 'angry', 'lonely'];
-const POSITIVE_MOODS = ['excited', 'calm', 'inspired', 'grateful', 'joyful', 'hopeful', 'proud', 'content'];
+// Must match GranularSentiment values exactly (lowercased for .toLowerCase() comparison)
+const NEGATIVE_MOODS = ['anxious', 'frustrated', 'sad', 'overwhelmed', 'confused'];
+const POSITIVE_MOODS = ['joyful', 'grateful', 'proud', 'hopeful', 'content'];
 
 export const detectMoodPatterns = (entries: Entry[]): DetectedPattern | null => {
     if (entries.length < 3) return null;

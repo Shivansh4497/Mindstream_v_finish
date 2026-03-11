@@ -514,7 +514,14 @@ export const useAppLogic = () => {
     const handleToggleIntention = async (id: string, s: string) => {
         const ns = s === 'pending' ? 'completed' : 'pending';
         setIntentions(prev => prev.map(i => i.id === id ? { ...i, status: ns as any } : i));
-        db.updateIntentionStatus(id, ns as any);
+        try {
+            await db.updateIntentionStatus(id, ns as any);
+        } catch (error) {
+            console.error('Failed to toggle intention:', error);
+            // Revert optimistic update on failure
+            setIntentions(prev => prev.map(i => i.id === id ? { ...i, status: s as any } : i));
+            showToast('Failed to update goal status.');
+        }
     };
 
     const handleToggleStar = async (id: string, isStarred: boolean) => {
@@ -530,15 +537,44 @@ export const useAppLogic = () => {
         }
     };
 
-    const handleDeleteIntention = async (id: string) => { setIntentions(prev => prev.filter(i => i.id !== id)); db.deleteIntention(id); };
-    const handleDeleteHabit = async (id: string) => { setHabits(prev => prev.filter(h => h.id !== id)); db.deleteHabit(id); };
+    const handleDeleteIntention = async (id: string) => {
+        const snapshot = intentions.find(i => i.id === id);
+        setIntentions(prev => prev.filter(i => i.id !== id));
+        try {
+            await db.deleteIntention(id);
+        } catch (error) {
+            console.error('Failed to delete intention:', error);
+            if (snapshot) setIntentions(prev => [snapshot, ...prev]);
+            showToast('Failed to delete goal.');
+        }
+    };
+    const handleDeleteHabit = async (id: string) => {
+        const snapshot = habits.find(h => h.id === id);
+        setHabits(prev => prev.filter(h => h.id !== id));
+        try {
+            await db.deleteHabit(id);
+        } catch (error) {
+            console.error('Failed to delete habit:', error);
+            if (snapshot) setHabits(prev => [snapshot, ...prev]);
+            showToast('Failed to delete habit.');
+        }
+    };
     const handleEditEntry = async (e: Entry, t: string) => {
         const updated = await db.updateEntry(e.id, { text: t });
         if (isMounted.current) {
             setEntries(prev => prev.map(ent => ent.id === e.id ? updated : ent));
         }
     };
-    const handleDeleteEntry = async (e: Entry) => { setEntries(prev => prev.filter(x => x.id !== e.id)); db.deleteEntry(e.id); };
+    const handleDeleteEntry = async (e: Entry) => {
+        setEntries(prev => prev.filter(x => x.id !== e.id));
+        try {
+            await db.deleteEntry(e.id);
+        } catch (error) {
+            console.error('Failed to delete entry:', error);
+            setEntries(prev => [e, ...prev]);
+            showToast('Failed to delete entry.');
+        }
+    };
 
     const handleAcceptSuggestion = async (id: string, s: EntrySuggestion) => {
         if (s.type === 'habit') await handleAddHabit(s.label, s.data?.frequency || 'daily');
