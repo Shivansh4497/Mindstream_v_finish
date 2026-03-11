@@ -1,9 +1,9 @@
 # Product Requirement Document: Mindstream
-**Version:** 6.9
-**Last Updated:** January 30, 2026 (Soft Deletes & Automation Suite)
-**Status:** Production (MVP Ready - Invite-Only Launch)  
-**Repository:** [github.com/Shivansh4497/Mindstream_v1](https://github.com/Shivansh4497/Mindstream_v1)  
-**Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth), Google Gemini 2.0 Flash, Sentry  
+**Version:** 7.0
+**Last Updated:** March 11, 2026 (Behavioral Pattern Engine - Phases 0-5)
+**Status:** Production (Active Development - Invite-Only)  
+**Repository:** [github.com/Shivansh4497/Mindstream_v_finish](https://github.com/Shivansh4497/Mindstream_v_finish)  
+**Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Supabase (PostgreSQL + Auth + Edge Functions), Google Gemini 2.0 Flash, Sentry  
 **Author:** Product Team
 
 ---
@@ -47,7 +47,7 @@ We feel things and do things, but **rarely understand the correlation** between 
 **Example:**  
 *"Why am I anxious?"* → The answer might be: *"Because you haven't exercised in 3 days."*
 
-Most apps track either inputs (journals) or outputs (habit trackers). Mindstream tracks **both** and uses AI to **close the loop**.
+Most apps track either inputs (journals) or outputs (habit trackers). Mindstream tracks **both** and uses a Two-Stage Correlation Engine to **close the loop with statistical proof**.
 
 ### 1.2 The Solution
 
@@ -56,6 +56,8 @@ Most apps track either inputs (journals) or outputs (habit trackers). Mindstream
 A private, AI-powered journaling companion that acts as a **Self-Correction Engine**. It:
 - Captures scattered thoughts effortlessly (text + **voice in all contexts**)
 - Tracks behavioral systems (habits) and finite goals (intentions)
+- **NEW v7.0:** Computes statistically verified correlations between mood and habits using Pearson *r*
+- **NEW v7.0:** Delivers AI-narrated behavioral insights built from proven math, ensuring zero hallucination.
 - Synthesizes patterns using AI + RAG (Retrieval Augmented Generation)
 - Delivers actionable insights that connect feelings with behaviors
 - **Adapts its personality** to match your preferred coaching style
@@ -70,9 +72,11 @@ A private, AI-powered journaling companion that acts as a **Self-Correction Engi
 3. **Zero Latency:** Optimistic UI makes the app feel instant.
 4. **Contextual Intelligence:** AI knows your history, preventing generic advice.
 5. **Graceful Degradation:** Works as a "dumb journal" even if AI fails.
-6. **Personalization:** 5 distinct AI personalities to match your needs.
-7. **Accessibility:** Voice input/output for hands-free interaction.
-8. **Premium Design:** Calm, sophisticated dark theme aligned with "Calm · Growth · Clarity" principles.
+6. **Statistical Integrity (NEW v7.0):** Behavioral insights only surface when math proves them (n ≥ 14 days, \|r\| ≥ 0.30).
+7. **AI Safety Boundary (NEW v7.0):** AI never processes raw journal text for pattern detection — it only narrates verified numerical findings.
+8. **Personalization:** 5 distinct AI personalities to match your needs.
+9. **Accessibility:** Voice input/output for hands-free interaction.
+10. **Premium Design:** Calm, sophisticated dark theme aligned with "Calm · Growth · Clarity" principles.
 
 ---
 
@@ -122,17 +126,18 @@ A private, AI-powered journaling companion that acts as a **Self-Correction Engi
 | **Yearly Review** | Beautiful "Spotify Wrapped" style annual summary |
 | **Full Data Export** | Download your entire history in JSON or Markdown |
 | **Voice Output** | AI can speak responses using Text-to-Speech |
-| **Professional Design** | **NEW!** Refined color system for optimal readability and calm aesthetic |
+| **Professional Design** | Refined color system for optimal readability and calm aesthetic |
+| **Pattern Analysis (NEW)** | On-demand trigger to calculate Pearson correlations connecting mood to habits |
 
 ### 3.2 Competitive Differentiation
 
 | Competitor | What They Do | What Mindstream Does Better |
 |------------|--------------|----------------------------|
 | Notion/Obsidian | Manual note-taking | **AI auto-organizes + Voice everywhere + Personality adaptation** |
-| Day One | Beautiful journal | **Connects feelings → actions + Proactive nudges + Voice input** |
+| Day One | Beautiful journal | **Connects feelings → actions with Pearson r statistical proof** |
 | Habitica/Streaks | Gamified habits | **Ties habits to emotional state + Long-term insights** |
 | Therapist Apps | Generic CBT prompts | **Personalized via RAG + 5 coaching styles + Voice interaction** |
-| Replika | AI companion | **Action-oriented + Data ownership + Zero vendor lock-in** |
+| Exist.io | Manual correlation tracking | **Fully automated EIV scoring + AI narration layer** |
 
 ---
 
@@ -630,6 +635,24 @@ Suggestions must:
 | Explore in Chat | Open Chat, seed with entry context + follow-up question |
 | Skip | Dismiss modal, continue journaling |
 
+### 5.6 Pattern Analysis Flow (NEW v7.0)
+
+**Pre-conditions:**
+- User has ≥ 14 journal entries with `eiv_score` populated
+- User has ≥ 1 active habit with logs
+
+**Step-by-step:**
+1. Navigate to Insights tab
+2. View three sections: Reflections, Deep Dive, and **Pattern Analysis** (bottom CTA pill)
+3. Tap "Pattern Analysis" → `PatternInsightsPanel` opens in idle state
+4. **Computing phase:** `runAllCorrelations` runs Pearson *r* on Daily EIV vs. habit vectors (lag-0 and lag-1). Rejects if n < 14 or \|r\| < 0.30.
+5. **Narrating phase:** `runNarrationPipeline` sends ONLY verified statistics to `ai-proxy` (no journal text). AI returns `{ title, insight, emoji }` JSON.
+6. **Done phase:** Cards render with Framer Motion staggered animation showing:
+   - AI insight sentence
+   - EIV delta badge (e.g., "+34pts")
+   - Statistical footnote: `r = +0.62`, `n = 21 days`, confidence label
+7. If no correlations pass gates: "No significant patterns yet" empty state.
+
 ---
 
 ## 6. Progressive Disclosure System (NEW v6.0)
@@ -998,6 +1021,7 @@ actions: {
 | `generateChatStarters` | Recent entries + intentions | 3 conversation openers | Reduce blank-state friction |
 | `generateOnboardingSuggestions` | First entry text | Habits + Intentions | Smart onboarding |
 | `generateYearlyReview` | Annual data | Themes + Core Memories | Yearly insights |
+| `narrate-correlation` | Stats: r, n, direction, etc. | Single sentence + emoji | **NEW v7.0:** translates verified math into text without raw context |
 
 **Schema-Driven Outputs:**
 - All AI calls use `responseMimeType: "application/json"`
@@ -1067,8 +1091,19 @@ create table entries (
   primary_sentiment text,
   emoji text,
   secondary_sentiment text,
-  suggestions jsonb
+  suggestions jsonb,
+  eiv_score numeric(4,2), -- NEW v7.0: Emotional Intensity Vector [-1.0 to 1.0]
+  deleted_at timestamptz  -- NEW v6.9: Soft delete support
 );
+
+-- Materialized Views (NEW v7.0 Phase 1)
+-- 3a. daily_emotional_scores
+-- Computes the average eiv_score per user per day in local time
+CREATE MATERIALIZED VIEW daily_emotional_scores AS ...
+
+-- 3b. habit_logs_daily
+-- Normalizes habit completion logs to local dates
+CREATE MATERIALIZED VIEW habit_logs_daily AS ...
 
 -- 4. Reflections Table
 create table reflections (
@@ -1118,13 +1153,35 @@ create table intentions (
   created_at timestamptz default now()
 );
 
--- 8. Insight Cards Table
+-- 8. Correlation Snapshots Table (NEW v7.0 Phase 2)
+create table correlation_snapshots (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  habit_id uuid references habits(id) on delete cascade not null,
+  period_start date not null,
+  period_end date not null,
+  n_days int not null,
+  r_value numeric(4,2) not null,
+  direction text not null, -- 'positive' | 'negative'
+  confidence_label text not null, -- 'moderate' | 'strong' | 'very strong'
+  avg_eiv_when_completed numeric(4,2),
+  avg_eiv_when_missed numeric(4,2),
+  completed_count int,
+  missed_count int,
+  lag_days int default 0,
+  is_narrated boolean default false,
+  created_at timestamptz default now()
+);
+
+-- 9. Insight Cards Table (UPDATED v7.0 Phase 3)
 create table insight_cards (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
-  type text not null,
+  type text not null, -- e.g., 'correlation'
   title text not null,
-  content text not null,
+  content text not null, -- The AI narrated sentence
+  emoji text,
+  correlation_id uuid references correlation_snapshots(id) on delete set null,
   metadata jsonb,
   created_at timestamptz default now(),
   dismissed boolean default false
@@ -1214,16 +1271,34 @@ create policy "Users can delete their shared chats" on chat_feedback for delete 
 
 ## 8. AI System
 
+### 8.0 Two-Stage Behavioral Engine (NEW v7.0)
+
+Mindstream enforces a strict boundary between mathematical proof and AI narration to prevent hallucination:
+
+```
+Stage 1: TypeScript/SQL (No AI)
+  - correlationService.ts computes Pearson r on EIV scores
+  - Applies hard gates (n ≥ 14, |r| ≥ 0.30)
+  - Outputs ONLY verified numerical correlations
+
+Stage 2: AI Narration (No raw user data)
+  - narrationService.ts sends numbers to ai-proxy
+  - AI receives: habit name, r, n, direction, EIV averages
+  - AI NEVER sees raw journal entry text
+  - Output: Single human-readable insight sentence
+```
+
 ### 8.1 Model Selection
 
-**Primary Model:** Google Gemini 2.0 Flash
+**Primary Models:**
+- Groq Llama 3.1 70B / 8B (Fastest, highest capacity)
+- Google Gemini 2.0 / 2.5 Flash (Fallback)
 
 **Why?**
-- Fast (<2s latency)
-- Multimodal ready (future: voice, images)
-- Structured output support (JSON schema)
-- Cost-effective vs. GPT-4
-- Good at personality adaptation
+- Edge Function fallback chain ensures high availability
+- Sub-second latency via Groq
+- Structured JSON output support
+- Cost-effective for high-volume narration
 
 ### 8.2 Personality System
 
@@ -2148,6 +2223,50 @@ All icons in `/components/icons/` using Lucide React standard:
 
 *End of PRD v6.0*
 
+
+---
+
+## 14. Behavioral Pattern Engine (NEW v7.0)
+
+This section details the complete end-to-end architecture built in Phases 0–5 to compute, verify, and narrate statistical correlations between user moods and user habits.
+
+### Principle: The Two-Stage Check
+AI models cannot be trusted to find behavioral patterns from raw text; they hallucinate correlations that don't exist. Mindstream solves this by enforcing a hard boundary: **Stage 1 calculates the Pearson correlation using raw database rows. Stage 2 sends only the mathematical results to the AI for narration.**
+
+### The 5 Phases of Implementation:
+
+#### Phase 1: EIV Scoring Engine
+- **What it is:** The Emotional Intensity Vector (EIV) maps 13 qualitative sentiments to a quantitative scale [-1.0 to 1.0].
+- **Mechanism:** `computeEIV` assigns values (e.g., Grateful = +0.8, Anxious = -0.6, Calm = +0.4).
+- **Pipeline:** New entries are scored synchronously at write-time (Phase 5). Unscored older entries are backfilled silently when the user opens the app (`eivBackfillService.ts`), batching 50 at a time.
+- **Database:** `eiv_score` stored on `entries` table. `daily_emotional_scores` materialized view computes the daily average.
+
+#### Phase 2: Pearson Correlation Engine
+- **What it is:** Pure TypeScript mathematical pipeline (`utils/correlation.ts`, `services/correlationService.ts`).
+- **Mechanism:** For every active habit, it fetches the daily EIV scores (mood vector) and the `habit_logs` (completion vector).
+- **Lag Analysis:** It aligns the vectors twice: `lagDays = 0` (habit today vs mood today) and `lagDays = 1` (habit today vs mood tomorrow).
+- **The Hard Gates:** A correlation is ONLY passed out of this engine if it proves statistical significance:
+  1. `n_days >= 14` (Must have at least 14 days of overlapping mood/habit data)
+  2. `|r| >= 0.30` (Pearson r must be moderate or stronger)
+- **Database:** Outputs are saved to `correlation_snapshots` to preserve the exact mathematical state at time of calculation.
+
+#### Phase 3: AI Narration Layer
+- **What it is:** The translation layer that turns math into empathy (`services/narrationService.ts`).
+- **Mechanism:** Takes the output from Phase 2 (the snapshots). Calls the `ai-proxy` Edge Function using the `narrate-correlation` action.
+- **The Safety Boundary:** The payload sent to the AI contains NO journal text, NO dates, NO personal identifiers. It looks like: `{ habitName: "Meditation", r: 0.62, n: 21, direction: "positive", avgEivWhenCompleted: 0.4, ... }`
+- **Output:** The AI generates a single, tightly constrained conversational sentence (e.g., "On the 21 days you practiced Meditation, your mood improved significantly.")
+- **Database:** The output is saved to `insight_cards` and linked via `correlation_id`.
+
+#### Phase 4: UI Integration (Pattern Analysis Tab)
+- **What it is:** The user-facing trigger and display (`components/PatternInsightsPanel.tsx`).
+- **Mechanism:** Lives in the Insights tab. Built with a 6-state machine: `idle`, `computing`, `narrating`, `done`, `insufficient_data`, `error`.
+- **Data Readiness Gate:** If the user hasn't met the minimum `n >= 14` requirement (meaning the math would immediately reject them), the UI hides the "Run" button and displays a progress bar ("8 of 14 mood entries scored").
+- **Visuals:** Insight cards show the AI sentence, accompanied by a "statistical footnote" revealing the exact `r` value, `n` count, and confidence label ("Glass Box" AI approach).
+
+#### Phase 5: Real-Time EIV Scoring
+- **What it is:** Zero-latency scoring payload injection (`hooks/useAppLogic.ts`).
+- **Mechanism:** When a user saves an entry, the `ai-proxy` returns a `primary_sentiment`. Before calling `db.addEntry`, the client synchronously calls `computeEIV(sentiment)` and injects the score into the insertion payload.
+- **Impact:** New entries are immediately available to the correlation engine without waiting for the next session's backfill cycle. Zero extra network calls required.
 
 ---
 
