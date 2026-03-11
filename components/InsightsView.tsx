@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Activity, ChevronRight } from 'lucide-react';
+import { Sparkles, Activity, ChevronRight, BarChart2 } from 'lucide-react';
 import { ReflectionsView } from './ReflectionsView';
 import { LifeAreaDashboard } from './LifeAreaDashboard';
+import { PatternInsightsPanel } from './PatternInsightsPanel';
 import type { Entry, Intention, Reflection, Habit, HabitLog, AIStatus, EntrySuggestion } from '../types';
 
 interface InsightsViewProps {
@@ -31,7 +32,7 @@ interface InsightsViewProps {
 
 }
 
-type InsightsTab = 'reflect' | 'deep_dive';
+type InsightsTab = 'reflect' | 'deep_dive' | 'patterns';
 
 export const InsightsView: React.FC<InsightsViewProps> = ({
     entries, intentions, reflections, habits, habitLogs,
@@ -68,10 +69,34 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                         Back to Reflections
                     </button>
                 )}
+
+                {activeTab === 'patterns' && (
+                    <button
+                        onClick={() => setActiveTab('reflect')}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-full text-xs font-medium text-gray-400 hover:text-white transition-colors border border-white/10"
+                    >
+                        <Sparkles className="w-3 h-3" />
+                        Back
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}
             <div className="flex-grow overflow-hidden relative">
+
+                {/* Patterns tab button — bottom of header, full-width pill for discoverability */}
+                {activeTab === 'reflect' && (
+                    <div className="px-4 pb-2">
+                        <button
+                            onClick={() => setActiveTab('patterns')}
+                            className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-brand-teal/10 to-purple-500/10 hover:from-brand-teal/20 hover:to-purple-500/20 rounded-xl text-xs font-medium text-brand-teal border border-brand-teal/20 transition-all"
+                        >
+                            <BarChart2 className="w-3.5 h-3.5" />
+                            Pattern Analysis — discover habit–mood correlations
+                        </button>
+                    </div>
+                )}
+
                 <AnimatePresence mode="wait">
                     {activeTab === 'reflect' ? (
                         <motion.div
@@ -80,7 +105,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
-                            className="absolute inset-0 flex flex-col"
+                            className="absolute inset-0 flex flex-col pt-10"
                         >
                             <ReflectionsView
                                 entries={entries}
@@ -98,10 +123,9 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                 onDebug={onDebug}
                                 debugOutput={debugOutput}
                                 accountCreatedAt={accountCreatedAt || undefined}
-
                             />
                         </motion.div>
-                    ) : (
+                    ) : activeTab === 'deep_dive' ? (
                         <motion.div
                             key="deep_dive"
                             initial={{ opacity: 0, x: 20 }}
@@ -118,6 +142,21 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                 onBack={() => setActiveTab('reflect')}
                                 onOpenYearlyReview={onOpenYearlyReview}
                                 isGeneratingYearly={isGeneratingYearly}
+                            />
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="patterns"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.2 }}
+                            className="absolute inset-0 flex flex-col"
+                        >
+                            <PatternInsightsPanel
+                                habits={habits}
+                                entries={entries}
+                                habitLogs={habitLogs}
                             />
                         </motion.div>
                     )}
