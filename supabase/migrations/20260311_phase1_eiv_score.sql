@@ -90,9 +90,10 @@ CREATE INDEX IF NOT EXISTS idx_correlation_snapshots_user
   ON correlation_snapshots (user_id, computed_at DESC)
   WHERE deleted_at IS NULL;
 
--- Unique constraint to prevent duplicate snapshots per habit+lag on the same day
+-- One active correlation snapshot per habit per lag direction.
+-- The nightly compute job upserts on this key, replacing stale results.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_correlation_snapshots_unique
-  ON correlation_snapshots (user_id, habit_id, lag_days, DATE(computed_at));
+  ON correlation_snapshots (user_id, habit_id, lag_days);
 
 COMMENT ON TABLE correlation_snapshots IS
   'Verified Pearson correlation results computed by TypeScript engine. Never written by AI. AI only reads these to narrate them.';
