@@ -38,6 +38,7 @@ export interface Entry {
   suggestions?: EntrySuggestion[] | null;
   source?: 'manual' | 'voice' | 'chat_takeaway';
   source_meta?: Record<string, unknown>;
+  eiv_score?: number | null;  // Emotional Intensity Vector [-1.0, +1.0], null = unscored
 }
 
 export interface AISuggestion {

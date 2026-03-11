@@ -8,6 +8,7 @@ import type { Entry, Reflection, Intention, Message, IntentionTimeframe, Habit, 
 import { isSameDay, getWeekId, getMonthId } from '../utils/date';
 import { calculateStreak } from '../utils/streak';
 import { backfillEIVScores } from '../services/eivBackfillService';
+import { computeEIV } from '../utils/eiv';
 import { supabase } from '../services/supabaseClient';
 
 const INITIAL_GREETING = "Hey! I'm here to help you reflect on what's on your mind. I can see your journal entries and help you spot patterns. What's going on today?";
@@ -222,7 +223,11 @@ export const useAppLogic = () => {
 
             if (!isMounted.current) return;
 
-            const savedEntry = await db.addEntry(user.id, { ...processedData, text, timestamp: tempEntry.timestamp });
+            // Compute EIV score synchronously from the AI sentiment — zero extra calls.
+            // If sentiment is null (AI failed), eiv_score will be null (backfill will retry later).
+            const eiv_score = computeEIV(processedData.primary_sentiment ?? null);
+
+            const savedEntry = await db.addEntry(user.id, { ...processedData, text, timestamp: tempEntry.timestamp, eiv_score });
 
             if (isMounted.current) {
                 setEntries(prev => prev.map(e => e.id === tempId ? savedEntry : e));
