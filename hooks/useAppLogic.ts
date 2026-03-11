@@ -7,6 +7,8 @@ import * as nudgeEngine from '../services/nudgeEngine';
 import type { Entry, Reflection, Intention, Message, IntentionTimeframe, Habit, HabitLog, HabitFrequency, EntrySuggestion, AIStatus, UserContext, HabitCategory, InsightCard, Nudge, Profile } from '../types';
 import { isSameDay, getWeekId, getMonthId } from '../utils/date';
 import { calculateStreak } from '../utils/streak';
+import { backfillEIVScores } from '../services/eivBackfillService';
+import { supabase } from '../services/supabaseClient';
 
 const INITIAL_GREETING = "Hey! I'm here to help you reflect on what's on your mind. I can see your journal entries and help you spot patterns. What's going on today?";
 const PAGE_SIZE = 20;
@@ -156,6 +158,15 @@ export const useAppLogic = () => {
             return () => clearTimeout(timer);
         }
     }, [isDataLoaded, user, entries.length, habitLogs.length, intentions.length]);
+
+    // EIV Backfill — fire-and-forget, runs once per session after data loads
+    // Scores any entries that have a sentiment but no eiv_score yet.
+    // Never blocks the UI. Migrates to nightly compute in Phase 4.
+    useEffect(() => {
+        if (isDataLoaded && user && supabase && entries.length > 0) {
+            backfillEIVScores(supabase, user.id, entries).catch(console.error);
+        }
+    }, [isDataLoaded, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleLoadMore = async () => {
         if (!user || isLoadingMore || !hasMore) return;

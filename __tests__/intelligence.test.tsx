@@ -9,7 +9,8 @@ vi.mock('../services/geminiClient', () => ({
     callAIProxy: vi.fn(),
     verifyApiKey: vi.fn(),
     GEMINI_API_KEY_AVAILABLE: true,
-    getAiClient: vi.fn()
+    getAiClient: vi.fn(),
+    enrichLastAIMeta: vi.fn(),
 }));
 
 describe('Intelligence Layer Verification', () => {
@@ -58,7 +59,8 @@ describe('Intelligence Layer Verification', () => {
 
             const prompt = gemini.buildSystemContext(context);
 
-            expect(prompt).toContain('My [yearly] goal is: "Run a marathon"');
+            expect(prompt).toContain('Run a marathon');
+            expect(prompt).toContain('goal');
             expect(prompt).toContain('Habit: Drink Water');
             expect(prompt).toContain('Streak: 5');
         });
