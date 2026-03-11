@@ -14,7 +14,8 @@ export type AIProxyAction =
     | 'daily-reflection'
     | 'weekly-reflection'
     | 'monthly-reflection'
-    | 'chat-summary';
+    | 'chat-summary'
+    | 'narrate-correlation';
 
 export interface AIProxyMeta {
     provider?: string;

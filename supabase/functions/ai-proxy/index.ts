@@ -33,7 +33,7 @@ console.log('[AI Proxy] GEMINI_API_KEY present:', !!geminiKey);
 console.log('[AI Proxy] Provider chain: Groq 70B -> Groq 8B -> Gemini Flash -> Gemini Lite -> Cached');
 
 interface AIRequest {
-    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection' | 'chat-summary' | 'list-models';
+    action: 'process-entry' | 'chat' | 'suggestions' | 'instant-insight' | 'analyze-habit' | 'analyze-intention' | 'extract-keywords' | 'daily-reflection' | 'weekly-reflection' | 'monthly-reflection' | 'chat-summary' | 'narrate-correlation' | 'list-models';
     payload: Record<string, any>;
 }
 
@@ -159,6 +159,11 @@ const CACHED_FALLBACKS: CachedResponses = {
         title: "Conversation Insights",
         summary: "• Unable to generate summary at this time\n• Please try again in a moment",
         prompt_version: 'chat-summary-v1'
+    },
+    'narrate-correlation': {
+        title: 'A pattern worth noting',
+        insight: 'We noticed a connection between this habit and your mood. Keep tracking to confirm it.',
+        emoji: '📊'
     }
 };
 
@@ -742,6 +747,41 @@ Rules:
                         summary: parsed.summary,
                         prompt_version: 'chat-summary-v2'
                     };
+                    break;
+                }
+
+                case 'narrate-correlation': {
+                    // Stage 2: AI receives ONLY verified statistics — never raw entry text.
+                    // This is the Glass Box boundary. Do not add user text to this prompt.
+                    const { habitName, r, n, direction, confidenceLabel, lagDays, avgEivWhenCompleted, avgEivWhenMissed, completedCount, missedCount } = payload;
+
+                    const lagLabel = lagDays === 0 ? 'on the same day' : 'the following day';
+                    const moodShift = (avgEivWhenCompleted - avgEivWhenMissed).toFixed(2);
+                    const moodShiftLabel = parseFloat(moodShift) > 0 ? `+${moodShift} higher` : `${moodShift} lower`;
+
+                    const prompt = `You are a data-driven behavioral coach. A statistical analysis has found a VERIFIED correlation. Your job is to narrate it in one clear, specific sentence.
+
+STATISTICAL FINDINGS (do not invent or exaggerate):
+- Habit: "${habitName}"
+- Pearson correlation: r = ${r} (${confidenceLabel} ${direction} correlation)
+- Data points: ${n} days analyzed
+- Pattern: On days when the habit was completed (${completedCount} days), average mood EIV was ${avgEivWhenCompleted.toFixed(2)}. On days it was missed (${missedCount} days), average mood EIV was ${avgEivWhenMissed.toFixed(2)}. That is ${moodShiftLabel} on completion days.
+- Timing: effect observed ${lagLabel}
+
+RULES:
+- Write exactly ONE sentence (max 25 words)
+- State the correlation as a FINDING, not a recommendation
+- Use plain language — no EIV jargon, no "correlation coefficient"
+- Do NOT say "studies show" or make causal claims (correlation is not causation)
+- Be specific: name the habit, describe the direction
+- Good example: "On days you meditate, your mood tends to score ${moodShiftLabel} than days you skip it."
+
+Respond with ONLY JSON:
+{"title": "5-6 word insight title", "insight": "Your one-sentence finding.", "emoji": "relevant emoji"}`;
+
+                    const aiResult = await callAI(prompt, action);
+                    aiMeta = aiResult;
+                    result = parseJSON(aiResult.text);
                     break;
                 }
 
