@@ -2334,3 +2334,51 @@ AI models cannot be trusted to find behavioral patterns from raw text; they hall
   - **VERIFIED:** RLS policies on all 11 tables
   - **STATUS:** Ready for invite-only launch
 
+---
+
+## 16. Phase 6: Dead Code Elimination & Architecture Bug Fixes (v7.1)
+
+This section details the cleanup executed in March 2026 to resolve technical debt identified during the CTO Audit and to pivot the product direction away from non-core features (namely, the Personality System).
+
+### 16.1 Personality System Deprecation (P6-T2)
+The feature allowing users to select different AI personas (e.g., Guide, Challenger, Friend) was fully eliminated to simplify the product surface and enforce a singular, high-quality "Mindstream Companion" voice.
+- **Database:** Dropped the `personalities` table entirely.
+- **Profiles Schema:** Dropped the `context_window_size` column from the `profiles` table to remove unused token-limit tracking.
+- **UI Components:** Deleted `components/PersonalitySelector.tsx` and purged all references to it in `SettingsView.tsx` and `OnboardingWizard.tsx` (removed Step 1.5).
+- **Core Types:** Removed `PersonalityId` and the `personalityId` reference from `UserContext` in `types/index.ts`.
+- **AI Service:** `services/geminiService.ts` was refactored to remove all dynamic fetching of personality configs. The system now uses a statically hardcoded default "Stoic-Neutral" prompt embedded directly into `getChatResponseStream`.
+
+### 16.2 Critical Bug Fixes (P6-T1)
+
+**C3 Fix: Chat State Desync (`hooks/useAppLogic.ts`)**
+- *Problem:* Rapid user messages or API errors could result in empty AI chat bubbles appearing and causing state desynchronization because the system assumed the AI bubble was always the absolute last index in the array.
+- *Solution:* Refactored `handleSendMessage` to use a robust backwards search loop (`for (let i = newHistory.length - 1; i >= 0; i--)`) to definitively locate the `temp-ai-bubble` by ID or exact text matching, rather than relying on index assumptions.
+
+**C6 Fix: Timezone Drift (`services/dbService.ts` & `hooks/useAppLogic.ts`)**
+- *Problem:* Date manipulations using strict `YYYY-MM-DD` string slicing were causing off-by-one errors across timezones (e.g., a habit marked complete at 11 PM PST would register as tomorrow in UTC).
+- *Solution:* Replaced string slicing with robust local date instantiations (`new Date(date.getFullYear(), date.getMonth(), date.getDate())`) in `syncHabitCompletion` and `handleAddIntention` to ensure the dates always resolve correctly relative to the user's local timezone.
+
+**C4 Fix: Cache Invalidation Data Leak (`context/AuthContext.tsx`)**
+- *Problem:* The `accountCreatedAtCache` in `dbService.ts` was persisting across user sessions on the same device. If User A logged out and User B logged in, User B might inherit User A's creation timestamp.
+- *Solution:* Added an explicit call to `db.clearAccountCreatedAtCache(user.id)` inside the `logout()` function in `AuthContext.tsx` to ensure total isolation upon session termination.
+
+**P1/P4 Fixes: Database Over-fetching (`services/dbService.ts`)**
+- *Problem:* The initial payload generation functions (`getReflections`, `getIntentions`, `getHabits`) were fetching the *entire* user history on mount without pagination or bounds, creating an N+1 scaling risk and excessive bandwidth usage.
+- *Solution:* Applied `.limit(50)` bounds to the core history fetches in `dbService.ts` to explicitly bound the initial payload size. Modified `getCurrentPeriodHabitLogs` to only fetch logs from the `last 30 days` rather than unconditionally returning all historical data.
+
+### 16.3 AI Safety Updates
+
+**AIS1 Fix: Prompt Injection Vulnerability (`services/geminiService.ts`)**
+- *Problem:* Raw user journal text was being fully injected into the system prompt. While truncation existed, a user could manipulate the prompt via system-level bracket escaping (e.g., `] Ignore all previous instructions...`).
+- *Solution:* Implemented a deep sanitization pass in `buildSystemContext` that maps over recent user entries and forcibly escapes structural Markdown sequences (`replace(/\[/g, '(').replace(/\]/g, ')')` and `replace(/```/g, "'''")`) before truncating the entry to 300 characters. This isolates the user's input safely within the AI's contextual context frame.
+
+### Changelog v7.1
+- **v7.1 (March 11, 2026): Phase 6 Cleanup Complete**
+  - **DELETED:** Personality System (Database, UI, Types, Configs)
+  - **FIXED:** Chat State Desync (C3)
+  - **FIXED:** Timezone Drift (C6)
+  - **FIXED:** Cross-session Cache Leak (C4)
+  - **FIXED:** Over-fetching on Initial Load (P1/P4)
+  - **FIXED:** Prompt Injection Vulnerability (AIS1)
+  - **STATUS:** Codebase optimized and ready for Monetization / Cold-Start integration.
+
